@@ -5,7 +5,7 @@ It is a Batch file and it's made to allow user customization and implementation.
 
 It is just batch with no external scripts, custom executable, etc.
 
-# EXISTING FEATURES
+# FEATURES
 The main features are:
 - User interface on left side
 - Scrolling text on right side
