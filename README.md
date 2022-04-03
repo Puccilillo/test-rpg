@@ -20,6 +20,7 @@ The main features are:
 - Equipable items (Many weapons and armors)
 - Advanced damage calculation involving dps and armor resist
 - Working health and power regeneration overtime
+- Sellable loot to merchant
 
 # PLANNED FEATURES
 - Crafting and gathering skills
