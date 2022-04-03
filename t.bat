@@ -2,14 +2,15 @@
 setlocal enableextensions
 setlocal enabledelayedexpansion
 ::
-::0.1a initial batch
-::0.2a +split hud +minor fixes
-::0.3a +base inventory and equipment +minor fixes
-::0.4a +inventory pages +user save +minor fixes
+::0.5.0-alpha +invbar w/page +minor fixes
+::0.4.0-alpha +inventory pages +user save +minor fixes
+::0.3.0-alpha +base inventory and equipment +minor fixes
+::0.2.0-alpha +split hud +minor fixes
+::0.1.0-alpha initial batch
 ::
 set "appname=Test RPG"
-set "appver=0.4a"
-set "appdate=April 1, 2022"
+set "appver=0.4.0-alpha"
+set "appdate=April 2, 2022"
 title %appname% v%appver% - %appdate%
 
 :init
@@ -25,6 +26,7 @@ set /a "rpg.hud.right=rpg.hud.cols-rpg.hud.left-5"
 set /a "rpg.hud.barsize=(rpg.hud.left+1)/2"
 set "rpg.map.full=[ ]"
 set "rpg.map.empty=.:."
+set /a "rpg.inv.nullitem=0"
 set /a "rpg.delay=3"
 set "rpg.hud.keys=WSADQERUIKGHXV"
 for /l %%b in (1,1,%rpg.hud.barsize%) do set "rpg.hud.bar=/!rpg.hud.bar!-"
@@ -140,7 +142,6 @@ set "rpg.hud.l10=Inventory:"
 ::list items
 if defined rpg.hud.inv[1] for /f "delims=^=" %%c in ('set rpg.hud.inv[') do set %%c=
 set /a "rpg.hud.invslot=0"
-set /a "rpg.inv.nullitem=0"
 for /f "tokens=1-4 delims=.^=" %%i in ('set rpg.inv.') do (
 	::item=%%k quantity=%%l
 	if %%l GEQ 1 set /a "rpg.hud.invslot+=1"
@@ -159,13 +160,17 @@ for /l %%l in (%rpg.hud.invmin%,1,%rpg.hud.invmax%) do (
 	if !rpg.hud.invline! GTR 20 set /a "rpg.hud.invline-=10*(((!rpg.hud.invline!-1)/10)-1)"
 	if defined rpg.hud.inv[%%l] call set "rpg.hud.l!rpg.hud.invline!= [!rpg.hud.invslot:~-1!] %%rpg.item.!rpg.hud.inv[%%l]!.name%% (%%rpg.inv.!rpg.hud.inv[%%l]!%%)" & set "rpg.hud.invkeys=!rpg.hud.invkeys!!rpg.hud.invslot:~-1!"
 	)
+::add inventory controls
+set "rpg.hud.cont2=%rpg.hud.cont2% [0-9] Use"
 ::add pages
 if %rpg.hud.invpages% GTR 1 (
-	set "rpg.hud.l22= [P] Page %rpg.hud.invpage% of %rpg.hud.invpages%"
+	set "rpg.hud.invbar="
+	for /l %%p in (1,1,%rpg.hud.invpages%) do if %rpg.hud.invpage% EQU %%p (set "rpg.hud.invbar=!rpg.hud.invbar!#") else (set "rpg.hud.invbar=!rpg.hud.invbar!-")
+	set "rpg.hud.l22= Page %rpg.hud.invpage% of %rpg.hud.invpages%"
+	set "rpg.hud.l23= [!rpg.hud.invbar!]"
 	set "rpg.hud.invkeys=%rpg.hud.invkeys%P"
+	set "rpg.hud.cont2=%rpg.hud.cont2% [P] Page"
 	)
-:::::::::::::::::::::::::::::::::::: PAGE TABS rather than NUMBERS :::::::::::::::::::
-set "rpg.hud.cont2=%rpg.hud.cont2% [0-9] Use"
 
 ::this is skipped if equipment is NOT open
 if not "%rpg.hud.equipment%"=="open" goto :hudequipmentclosed
@@ -256,7 +261,7 @@ if [%rpg.hud.input%]==[G] set /p rpg.user.gold="New gold (%rpg.user.gold%)"
 if [%rpg.hud.input%]==[H] set /p rpg.user.hp="New hp (%rpg.user.hp%):"
 if [%rpg.hud.input%]==[K] set "rpg.enemy.hp=0"
 if [%rpg.hud.input%]==[X] set /p rpg.user.xp="New XP (%rpg.user.xp%)"
-if [%rpg.hud.input%]==[V] set /p rpg.delay="New delay (%rpg.delay%):"
+if [%rpg.hud.input%]==[V] set /p rpg.delay="New delay (%rpg.delay%):" & if !rpg.delay! LSS 1 set "rpg.delay=1"
 if [%rpg.hud.input%]==[1] if "%rpg.hud.inventory%"=="open" (set "rpg.hud.action=use") else (set "rpg.hud.action=unequip")
 if [%rpg.hud.input%]==[2] if "%rpg.hud.inventory%"=="open" (set "rpg.hud.action=use") else (set "rpg.hud.action=unequip")
 if [%rpg.hud.input%]==[3] if "%rpg.hud.inventory%"=="open" (set "rpg.hud.action=use") else (set "rpg.hud.action=unequip")
