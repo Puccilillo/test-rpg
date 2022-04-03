@@ -2,8 +2,9 @@
 setlocal enableextensions
 setlocal enabledelayedexpansion
 ::
-::0.6.1-alpha delayed display color reset after damage
-::0.6.0-alpha +added item bonuses to inventory list
+::0.7.1-alpha: easier inventory action check
+::0.7.0-alpha: added buyer job and code
+::0.6.2-alpha: changed giving gold in give item
 ::
 set "appname=Test RPG"
 set "appver=0.6.1-alpha"
@@ -135,7 +136,7 @@ if %rpg.user.status%==fight set "rpg.hud.l16= HP %rpg.hud.foebar% %rpg.enemy.hp%
 ::this is skipped if inventory is NOT open
 if not "%rpg.hud.inventory%"=="open" goto :hudinventoryclosed
 :hudinventoryopen
-set "rpg.hud.l10=Inventory:"
+if not defined rpg.world.%rpg.user.loc%.job (set "rpg.hud.l10=Inventory:" & set "rpg.hud.invaction=Use") else (if !rpg.world.%rpg.user.loc%.job!==buyer set "rpg.hud.l10=Choose what you want to sell:" & set "rpg.hud.invaction=Sell")
 ::list items
 if defined rpg.hud.inv[1] for /f "delims=^=" %%c in ('set rpg.hud.inv[') do set %%c=
 set /a "rpg.hud.invslot=0"
@@ -155,11 +156,11 @@ for /l %%l in (%rpg.hud.invmin%,1,%rpg.hud.invmax%) do (
 	set /a "rpg.hud.invslot=%%l"
 	set /a "rpg.hud.invline=10+%%l"
 	if !rpg.hud.invline! GTR 20 set /a "rpg.hud.invline-=10*(((!rpg.hud.invline!-1)/10)-1)"
-	for %%b in (arm dps str con dex hp pw) do if defined rpg.item.!rpg.hud.inv[%%l]!.%%b call set "rpg.hud.bonus=+%%rpg.item.!rpg.hud.inv[%%l]!.%%b%% %%b"
+	if %rpg.hud.invaction%==Sell (call set "rpg.hud.bonus=%%rpg.item.!rpg.hud.inv[%%l]!.val%%g") else (for %%b in (arm dps str con dex hp pw) do if defined rpg.item.!rpg.hud.inv[%%l]!.%%b call set "rpg.hud.bonus=+%%rpg.item.!rpg.hud.inv[%%l]!.%%b%% %%b")
 	if defined rpg.hud.inv[%%l] call set "rpg.hud.l!rpg.hud.invline!= [!rpg.hud.invslot:~-1!] %%rpg.item.!rpg.hud.inv[%%l]!.name%% (!rpg.hud.bonus!) (%%rpg.inv.!rpg.hud.inv[%%l]!%%)" & set "rpg.hud.invkeys=!rpg.hud.invkeys!!rpg.hud.invslot:~-1!"
 	)
 ::add inventory controls
-set "rpg.hud.cont2=%rpg.hud.cont2% [0-9] Use"
+set "rpg.hud.cont2=%rpg.hud.cont2% [0-9] %rpg.hud.invaction%"
 ::add pages
 if %rpg.hud.invpages% GTR 1 (
 	set "rpg.hud.invbar="
@@ -256,21 +257,21 @@ if [%rpg.hud.input%]==[R] set "rpg.hud.action=init"
 if [%rpg.hud.input%]==[U] set "rpg.hud.action=equipment"
 if [%rpg.hud.input%]==[I] set "rpg.hud.action=inventory"
 if [%rpg.hud.input%]==[P] if "%rpg.hud.inventory%"=="open" set /a "rpg.hud.invpage+=1"
-if [%rpg.hud.input%]==[G] set /p rpg.user.gold="New gold (%rpg.user.gold%)"
+if [%rpg.hud.input%]==[G] set /p rpg.give="Give item:" & if defined rpg.item.!rpg.give!.name set /a "rpg.inv.!rpg.give!+=1"
 if [%rpg.hud.input%]==[H] set /p rpg.user.hp="New hp (%rpg.user.hp%):"
 if [%rpg.hud.input%]==[K] set "rpg.enemy.hp=0"
 if [%rpg.hud.input%]==[X] set /p rpg.user.xp="New XP (%rpg.user.xp%)"
 if [%rpg.hud.input%]==[V] set /p rpg.delay="New delay (%rpg.delay%):" & if !rpg.delay! LSS 1 set "rpg.delay=1"
-if [%rpg.hud.input%]==[1] if "%rpg.hud.inventory%"=="open" (set "rpg.hud.action=use") else (set "rpg.hud.action=unequip")
-if [%rpg.hud.input%]==[2] if "%rpg.hud.inventory%"=="open" (set "rpg.hud.action=use") else (set "rpg.hud.action=unequip")
-if [%rpg.hud.input%]==[3] if "%rpg.hud.inventory%"=="open" (set "rpg.hud.action=use") else (set "rpg.hud.action=unequip")
-if [%rpg.hud.input%]==[4] if "%rpg.hud.inventory%"=="open" (set "rpg.hud.action=use") else (set "rpg.hud.action=unequip")
-if [%rpg.hud.input%]==[5] if "%rpg.hud.inventory%"=="open" (set "rpg.hud.action=use") else (set "rpg.hud.action=unequip")
-if [%rpg.hud.input%]==[6] if "%rpg.hud.inventory%"=="open" (set "rpg.hud.action=use") else (set "rpg.hud.action=unequip")
-if [%rpg.hud.input%]==[7] if "%rpg.hud.inventory%"=="open" (set "rpg.hud.action=use") else (set "rpg.hud.action=unequip")
-if [%rpg.hud.input%]==[8] if "%rpg.hud.inventory%"=="open" (set "rpg.hud.action=use") else (set "rpg.hud.action=unequip")
-if [%rpg.hud.input%]==[9] if "%rpg.hud.inventory%"=="open" (set "rpg.hud.action=use") else (set "rpg.hud.action=unequip")
-if [%rpg.hud.input%]==[0] set /a "rpg.hud.input=10" & if "%rpg.hud.inventory%"=="open" (set "rpg.hud.action=use") else (set "rpg.hud.action=unequip")
+if [%rpg.hud.input%]==[1] set "rpg.hud.action=use"
+if [%rpg.hud.input%]==[2] set "rpg.hud.action=use"
+if [%rpg.hud.input%]==[3] set "rpg.hud.action=use"
+if [%rpg.hud.input%]==[4] set "rpg.hud.action=use"
+if [%rpg.hud.input%]==[5] set "rpg.hud.action=use"
+if [%rpg.hud.input%]==[6] set "rpg.hud.action=use"
+if [%rpg.hud.input%]==[7] set "rpg.hud.action=use"
+if [%rpg.hud.input%]==[8] set "rpg.hud.action=use"
+if [%rpg.hud.input%]==[9] set "rpg.hud.action=use"
+if [%rpg.hud.input%]==[0] set /a "rpg.hud.input=10" & set "rpg.hud.action=use"
 goto :%rpg.hud.action%
 goto :eof
 
@@ -373,6 +374,8 @@ goto :loop
 goto :eof
 
 :use
+if %rpg.hud.equipment%==open goto :unequip
+if %rpg.hud.invaction%==Sell goto :sell
 set /a rpg.hud.input+=10*(rpg.hud.invpage-1)
 set rpg.hud.use=!rpg.hud.inv[%rpg.hud.input%]!
 if defined rpg.item.%rpg.hud.use%.slot if not defined rpg.user.!rpg.item.%rpg.hud.use%.slot! (
@@ -391,6 +394,15 @@ set rpg.hud.unequipitem=!rpg.user.%rpg.hud.unequip%!
 call :addline You remove !rpg.item.%rpg.hud.unequipitem%.name! and put it in your inventory.
 if defined rpg.user.%rpg.hud.unequip% set /a "rpg.inv.%rpg.hud.unequipitem%+=1"
 set "rpg.user.%rpg.hud.unequip%="
+goto :loop
+goto :eof
+
+:sell
+set /a rpg.hud.input+=10*(rpg.hud.invpage-1)
+set rpg.hud.sell=!rpg.hud.inv[%rpg.hud.input%]!
+set /a "rpg.user.gold+=rpg.item.%rpg.hud.sell%.val"
+set /a "rpg.inv.%rpg.hud.sell%-=1"
+call :addline You sold !rpg.item.%rpg.hud.sell%.name! for !rpg.item.%rpg.hud.sell%.val! gold.
 goto :loop
 goto :eof
 
