@@ -2,15 +2,12 @@
 setlocal enableextensions
 setlocal enabledelayedexpansion
 ::
-::0.5.0-alpha +invbar w/page +minor fixes
-::0.4.0-alpha +inventory pages +user save +minor fixes
-::0.3.0-alpha +base inventory and equipment +minor fixes
-::0.2.0-alpha +split hud +minor fixes
-::0.1.0-alpha initial batch
+::0.6.1-alpha delayed display color reset after damage
+::0.6.0-alpha +added item bonuses to inventory list
 ::
 set "appname=Test RPG"
-set "appver=0.4.0-alpha"
-set "appdate=April 2, 2022"
+set "appver=0.6.1-alpha"
+set "appdate=April 3, 2022"
 title %appname% v%appver% - %appdate%
 
 :init
@@ -158,7 +155,8 @@ for /l %%l in (%rpg.hud.invmin%,1,%rpg.hud.invmax%) do (
 	set /a "rpg.hud.invslot=%%l"
 	set /a "rpg.hud.invline=10+%%l"
 	if !rpg.hud.invline! GTR 20 set /a "rpg.hud.invline-=10*(((!rpg.hud.invline!-1)/10)-1)"
-	if defined rpg.hud.inv[%%l] call set "rpg.hud.l!rpg.hud.invline!= [!rpg.hud.invslot:~-1!] %%rpg.item.!rpg.hud.inv[%%l]!.name%% (%%rpg.inv.!rpg.hud.inv[%%l]!%%)" & set "rpg.hud.invkeys=!rpg.hud.invkeys!!rpg.hud.invslot:~-1!"
+	for %%b in (arm dps str con dex hp pw) do if defined rpg.item.!rpg.hud.inv[%%l]!.%%b call set "rpg.hud.bonus=+%%rpg.item.!rpg.hud.inv[%%l]!.%%b%% %%b"
+	if defined rpg.hud.inv[%%l] call set "rpg.hud.l!rpg.hud.invline!= [!rpg.hud.invslot:~-1!] %%rpg.item.!rpg.hud.inv[%%l]!.name%% (!rpg.hud.bonus!) (%%rpg.inv.!rpg.hud.inv[%%l]!%%)" & set "rpg.hud.invkeys=!rpg.hud.invkeys!!rpg.hud.invslot:~-1!"
 	)
 ::add inventory controls
 set "rpg.hud.cont2=%rpg.hud.cont2% [0-9] Use"
@@ -218,6 +216,7 @@ for %%d in (W,S,A,D) do if [%rpg.hud.input%]==[%%d] (
 for /l %%l in (1,1,%rpg.hud.lines%) do set "rpg.hud.l%%l=!rpg.hud.l%%l!%rpg.hud.spacer%"
 for /l %%l in (1,1,%rpg.hud.lines%) do if not defined rpg.hud.r%%l set "rpg.hud.r%%l=%rpg.hud.filler%"
 :display
+%rpg.hud.color%
 cls
 for /l %%l in (1,1,%rpg.hud.lines%) do echo  !rpg.hud.l%%l:~0,%rpg.hud.left%! # !rpg.hud.r%%l:~0,%rpg.hud.right%!
 
@@ -350,7 +349,6 @@ if %rpg.user.action%==attack (set /a "rpg.enemy.hp-=rpg.dmg.val") else (set /a "
 if %rpg.user.action%==defend color C7
 if %rpg.user.hp% LEQ 0 set /a "rpg.user.hp=0"
 if %rpg.enemy.hp% LEQ 0 set /a "rpg.enemy.hp=0"
-%rpg.hud.color%
 goto :loop
 
 :death
