@@ -7,7 +7,7 @@ setlocal enabledelayedexpansion
 ::0.6.2-alpha: changed giving gold in give item
 ::
 set "appname=Test RPG"
-set "appver=0.6.1-alpha"
+set "appver=0.7.1-alpha"
 set "appdate=April 3, 2022"
 title %appname% v%appver% - %appdate%
 
