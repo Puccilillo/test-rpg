@@ -22,6 +22,6 @@ The main features are:
 - Working health and power regeneration overtime
 
 # PLANNED FEATURES
-- Working armor/weapon shops
-- Working general merchant
+- Crafting and gathering skills
+- Working armor/weapon vendors
 - Game map expansion
