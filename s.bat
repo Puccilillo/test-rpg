@@ -67,7 +67,7 @@ set rpg.list=%rpg.list% %newworldid%
 goto :list1
 
 :edit1
-for %%e in (job dirn dirs dirw dire name enc desc) do call set /p rpg.world.!rpg.list!.%%e=(%%e) "%%rpg.world.!rpg.list!.%%e%%":
+for %%l in (%rpg.list%) do for %%e in (job dirn dirs dirw dire name enc desc) do call set /p rpg.world.%%l.%%e=(%%l.%%e) "!rpg.world.%%l.%%e!":
 goto :list1
 
 :save1
@@ -80,7 +80,7 @@ for /f "delims=" %%m in (enemies.dat) do set "rpg.enemy.%%m"
 for /f "tokens=3-4 delims=.^=" %%m in ('set rpg.enemy') do if %%n==name set "rpg.list=!rpg.list! %%m"
 :list2
 cls
-echo id                       max            arm            name
+echo id                  max       arm       name
 for %%e in (%rpg.list%) do (
     set "enemy=%%e%spacer%"
     set "max=!rpg.enemy.%%e.max!%spacer%"
@@ -121,14 +121,14 @@ for /f "delims=" %%m in (items.dat) do set "rpg.item.%%m"
 for /f "tokens=3-4 delims=.^=" %%m in ('set rpg.item') do if %%n==name set "rpg.list=!rpg.list! %%m"
 :list3
 cls
-echo id                       slot        dps/arm  val   name
+echo id                    slot      dps/arm  val   name
 for %%e in (%rpg.list%) do (
     set "item=%%e%spacer%"
     set "slot=!rpg.item.%%e.slot!%spacer%"
     if !rpg.item.%%e.slot!==weapon (set "dpsarm=!rpg.item.%%e.dps!%spacer%") else (set "dpsarm=!rpg.item.%%e.arm!%spacer%")
     set "val=!rpg.item.%%e.val!%spacer%"
     set "name=!rpg.item.%%e.name!%spacer%"
-    echo !item:~0,20!     !slot:~0,10!  !dpsarm:~0,5!    !val:~0,5! !name:~0,25!
+    echo !item:~0,20!!slot:~0,10!!dpsarm:~0,5!!val:~0,5!!name:~0,25!
 )
 echo.
 echo Commands: [1][2][Q][S]
