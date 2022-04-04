@@ -67,7 +67,7 @@ set rpg.list=%rpg.list% %newworldid%
 goto :list1
 
 :edit1
-for %%e in (job dirn dirs dirw dire name desc) do call set /p rpg.world.!rpg.list!.%%e=(%%e) "%%rpg.world.!rpg.list!.%%e%%":
+for %%e in (job dirn dirs dirw dire name enc desc) do call set /p rpg.world.!rpg.list!.%%e=(%%e) "%%rpg.world.!rpg.list!.%%e%%":
 goto :list1
 
 :save1
