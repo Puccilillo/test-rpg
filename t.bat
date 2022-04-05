@@ -136,15 +136,32 @@ if %rpg.user.status%==fight set "rpg.hud.l16= HP %rpg.hud.foebar% %rpg.enemy.hp%
 ::this is skipped if inventory is NOT open
 if not "%rpg.hud.inventory%"=="open" goto :hudinventoryclosed
 :hudinventoryopen
-if not defined rpg.world.%rpg.user.loc%.job (set "rpg.hud.l10=Inventory:" & set "rpg.hud.invaction=Use") else (if !rpg.world.%rpg.user.loc%.job!==buyer set "rpg.hud.l10=Choose what you want to sell:" & set "rpg.hud.invaction=Sell")
+::detect job
+if defined rpg.world.%rpg.user.loc%.job (
+	if !rpg.world.%rpg.user.loc%.job!==buyer (
+		set "rpg.hud.l10=Choose an item to sell:" & set "rpg.hud.invaction=Sell"
+	) else (
+		set "rpg.hud.l10=Choose an item to buy:" & set "rpg.hud.invaction=Buy"
+	)
+) else (
+	set "rpg.hud.l10=Inventory:" & set "rpg.hud.invaction=Use"
+)
 ::list items
 if defined rpg.hud.inv[1] for /f "delims=^=" %%c in ('set rpg.hud.inv[') do set %%c=
 set /a "rpg.hud.invslot=0"
-for /f "tokens=1-4 delims=.^=" %%i in ('set rpg.inv.') do (
-	::item=%%k quantity=%%l
-	if %%l GEQ 1 set /a "rpg.hud.invslot+=1"
-	if %%l GEQ 1 set "rpg.hud.inv[!rpg.hud.invslot!]=%%k"
+if %rpg.hud.invaction%==Buy (
+	for /f "tokens=1-5 delims=.^=" %%i in ('set rpg.item.') do (
+		::item=%%k ::property=%%l ::value=%%m
+		if %%l==slot if %%m==weapon set /a "rpg.hud.invslot+=1"
+		if %%l==slot if %%m==weapon set "rpg.hud.inv[!rpg.hud.invslot!]=%%k"
 	)
+) else (
+	for /f "tokens=1-4 delims=.^=" %%i in ('set rpg.inv.') do (
+		::item=%%k quantity=%%l
+		if %%l GEQ 1 set /a "rpg.hud.invslot+=1"
+		if %%l GEQ 1 set "rpg.hud.inv[!rpg.hud.invslot!]=%%k"
+	)
+)
 ::set pages
 if not defined rpg.hud.invpage set rpg.hud.invpage=1
 set /a "rpg.hud.invpages=1+(rpg.hud.invslot-1)/10"
@@ -156,9 +173,19 @@ for /l %%l in (%rpg.hud.invmin%,1,%rpg.hud.invmax%) do (
 	set /a "rpg.hud.invslot=%%l"
 	set /a "rpg.hud.invline=10+%%l"
 	if !rpg.hud.invline! GTR 20 set /a "rpg.hud.invline-=10*(((!rpg.hud.invline!-1)/10)-1)"
-	if %rpg.hud.invaction%==Sell (call set "rpg.hud.bonus=%%rpg.item.!rpg.hud.inv[%%l]!.val%%g") else (for %%b in (arm dps str con dex hp pw) do if defined rpg.item.!rpg.hud.inv[%%l]!.%%b call set "rpg.hud.bonus=+%%rpg.item.!rpg.hud.inv[%%l]!.%%b%% %%b")
-	if defined rpg.hud.inv[%%l] call set "rpg.hud.l!rpg.hud.invline!= [!rpg.hud.invslot:~-1!] %%rpg.item.!rpg.hud.inv[%%l]!.name%% (!rpg.hud.bonus!) (%%rpg.inv.!rpg.hud.inv[%%l]!%%)" & set "rpg.hud.invkeys=!rpg.hud.invkeys!!rpg.hud.invslot:~-1!"
+	if %rpg.hud.invaction%==Sell set /a "rpg.hud.bonus=rpg.item.!rpg.hud.inv[%%l]!.val*75/100" & set rpg.hud.bonus=!rpg.hud.bonus!g
+	if %rpg.hud.invaction%==Buy set /a "rpg.hud.bonus=rpg.item.!rpg.hud.inv[%%l]!.val*125/100" & set rpg.hud.bonus=!rpg.hud.bonus!g
+	if %rpg.hud.invaction%==Use for %%b in (arm dps str con dex hp pw) do if defined rpg.item.!rpg.hud.inv[%%l]!.%%b call set "rpg.hud.bonus=+%%rpg.item.!rpg.hud.inv[%%l]!.%%b%% %%b"
+	if defined rpg.hud.inv[%%l] (
+		call set "rpg.hud.l!rpg.hud.invline!= [!rpg.hud.invslot:~-1!] %%rpg.item.!rpg.hud.inv[%%l]!.name%%"
+		if %rpg.hud.invaction%==Buy (
+			call set "rpg.hud.l!rpg.hud.invline!=%%rpg.hud.l!rpg.hud.invline!%% (+%%rpg.item.!rpg.hud.inv[%%l]!.arm%%%%rpg.item.!rpg.hud.inv[%%l]!.dps%%) !rpg.hud.bonus!"
+		) else (
+			call set "rpg.hud.l!rpg.hud.invline!=%%rpg.hud.l!rpg.hud.invline!%% (%%rpg.inv.!rpg.hud.inv[%%l]!%%) !rpg.hud.bonus!"
+		)
+		set "rpg.hud.invkeys=!rpg.hud.invkeys!!rpg.hud.invslot:~-1!"
 	)
+)
 ::add inventory controls
 set "rpg.hud.cont2=%rpg.hud.cont2% [0-9] %rpg.hud.invaction%"
 ::add pages
@@ -376,6 +403,7 @@ goto :eof
 :use
 if %rpg.hud.equipment%==open goto :unequip
 if %rpg.hud.invaction%==Sell goto :sell
+if %rpg.hud.invaction%==Buy goto :buy
 set /a rpg.hud.input+=10*(rpg.hud.invpage-1)
 set rpg.hud.use=!rpg.hud.inv[%rpg.hud.input%]!
 if defined rpg.item.%rpg.hud.use%.slot if not defined rpg.user.!rpg.item.%rpg.hud.use%.slot! (
@@ -403,6 +431,18 @@ set rpg.hud.sell=!rpg.hud.inv[%rpg.hud.input%]!
 set /a "rpg.user.gold+=rpg.item.%rpg.hud.sell%.val"
 set /a "rpg.inv.%rpg.hud.sell%-=1"
 call :addline You sold !rpg.item.%rpg.hud.sell%.name! for !rpg.item.%rpg.hud.sell%.val! gold.
+goto :loop
+goto :eof
+
+:buy
+set /a rpg.hud.input+=10*(rpg.hud.invpage-1)
+set rpg.hud.buy=!rpg.hud.inv[%rpg.hud.input%]!
+set /a "rpg.hud.buyprice=rpg.item.%rpg.hud.buy%.val*125/100"
+if %rpg.user.gold% GEQ %rpg.hud.buyprice% (set /a "rpg.user.gold-=rpg.hud.buyprice, rpg.inv.%rpg.hud.buy%+=1") else goto :cantbuy
+call :addline You bought !rpg.item.%rpg.hud.buy%.name! for %rpg.hud.buyprice% gold.
+goto :loop
+:cantbuy
+call :addline You need %rpg.hud.buyprice%g to buy !rpg.item.%rpg.hud.buy%.name!.
 goto :loop
 goto :eof
 
