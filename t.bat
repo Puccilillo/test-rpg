@@ -2,12 +2,13 @@
 setlocal enableextensions
 setlocal enabledelayedexpansion
 ::
+::0.8.2 fixed selling price ratio
 ::0.8.1 added tavern job
 ::0.8.0 added shop code
 ::
 set "appname=Test RPG"
-set "appver=0.8.1-alpha"
-set "appdate=April 3, 2022"
+set "appver=0.8.2-alpha"
+set "appdate=April 5, 2022"
 title %appname% v%appver% - %appdate%
 
 :init
@@ -135,12 +136,14 @@ if %rpg.user.status%==fight set "rpg.hud.l16= HP %rpg.hud.foebar% %rpg.enemy.hp%
 ::this is skipped if inventory is NOT open
 if not "%rpg.hud.inventory%"=="open" goto :hudinventoryclosed
 :hudinventoryopen
+
 ::detect job
 set "rpg.hud.l10=Inventory:" & set "rpg.hud.invaction=Use"
 if defined rpg.world.%rpg.user.loc%.job (
 	set "rpg.hud.l10=Choose an item to buy:" & set "rpg.hud.invaction=Buy"
 	if !rpg.world.%rpg.user.loc%.job!==merchant set "rpg.hud.l10=Choose an item to sell:" & set "rpg.hud.invaction=Sell"
 )
+
 ::list items
 if defined rpg.hud.inv[1] for /f "delims=^=" %%c in ('set rpg.hud.inv[') do set %%c=
 set /a "rpg.hud.invslot=0"
@@ -156,7 +159,7 @@ if %rpg.hud.invtype%==owned (
 	if !rpg.world.%rpg.user.loc%.job!==weaponsm set "rpg.hud.invslots=weapon"
 	if !rpg.world.%rpg.user.loc%.job!==armorsm set "rpg.hud.invslots=head torso arms belt legs feet shield"
 	for /f "tokens=1-5 delims=.^=" %%i in ('set rpg.item.') do (
-		::item=%%k ::property=%%l ::value=%%m
+		::item=%%k property=%%l value=%%m
 		for %%s in (!rpg.hud.invslots!) do (
 			if %%l==slot if %%m==%%s set /a "rpg.hud.invslot+=1" 
 			if %%l==slot if %%m==%%s set "rpg.hud.inv[!rpg.hud.invslot!]=%%k"
@@ -168,6 +171,7 @@ if %rpg.hud.invtype%==owned (
 if not defined rpg.hud.invpage set rpg.hud.invpage=1
 set /a "rpg.hud.invpages=1+(rpg.hud.invslot-1)/10"
 if !rpg.hud.invpage! GTR %rpg.hud.invpages% set /a "rpg.hud.invpage=1"
+
 ::fill lines
 set /a "rpg.hud.invmin=1+10*(rpg.hud.invpage-1)"
 set /a "rpg.hud.invmax=rpg.hud.invmin+9"
@@ -188,8 +192,10 @@ for /l %%l in (%rpg.hud.invmin%,1,%rpg.hud.invmax%) do (
 		set "rpg.hud.invkeys=!rpg.hud.invkeys!!rpg.hud.invslot:~-1!"
 	)
 )
+
 ::add inventory controls
 set "rpg.hud.cont2=%rpg.hud.cont2% [0-9] %rpg.hud.invaction%"
+
 ::add pages
 if %rpg.hud.invpages% GTR 1 (
 	set "rpg.hud.invbar="
@@ -430,9 +436,10 @@ goto :eof
 :sell
 set /a rpg.hud.input+=10*(rpg.hud.invpage-1)
 set rpg.hud.sell=!rpg.hud.inv[%rpg.hud.input%]!
-set /a "rpg.user.gold+=rpg.item.%rpg.hud.sell%.val"
+set /a "rpg.hud.sellprice=rpg.item.%rpg.hud.sell%.val*75/100"
+set /a "rpg.user.gold+=rpg.hud.sellprice"
 set /a "rpg.inv.%rpg.hud.sell%-=1"
-call :addline You sold !rpg.item.%rpg.hud.sell%.name! for !rpg.item.%rpg.hud.sell%.val! gold.
+call :addline You sold !rpg.item.%rpg.hud.sell%.name! for %rpg.hud.sellprice% gold.
 goto :loop
 goto :eof
 
