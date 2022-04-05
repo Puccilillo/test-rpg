@@ -2,12 +2,11 @@
 setlocal enableextensions
 setlocal enabledelayedexpansion
 ::
-::0.7.1-alpha: easier inventory action check
-::0.7.0-alpha: added buyer job and code
-::0.6.2-alpha: changed giving gold in give item
+::0.8.1 added tavern job
+::0.8.0 added shop code
 ::
 set "appname=Test RPG"
-set "appver=0.7.1-alpha"
+set "appver=0.8.1-alpha"
 set "appdate=April 3, 2022"
 title %appname% v%appver% - %appdate%
 
