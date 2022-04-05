@@ -137,31 +137,34 @@ if %rpg.user.status%==fight set "rpg.hud.l16= HP %rpg.hud.foebar% %rpg.enemy.hp%
 if not "%rpg.hud.inventory%"=="open" goto :hudinventoryclosed
 :hudinventoryopen
 ::detect job
+set "rpg.hud.l10=Inventory:" & set "rpg.hud.invaction=Use"
 if defined rpg.world.%rpg.user.loc%.job (
-	if !rpg.world.%rpg.user.loc%.job!==buyer (
-		set "rpg.hud.l10=Choose an item to sell:" & set "rpg.hud.invaction=Sell"
-	) else (
-		set "rpg.hud.l10=Choose an item to buy:" & set "rpg.hud.invaction=Buy"
-	)
-) else (
-	set "rpg.hud.l10=Inventory:" & set "rpg.hud.invaction=Use"
+	set "rpg.hud.l10=Choose an item to buy:" & set "rpg.hud.invaction=Buy"
+	if !rpg.world.%rpg.user.loc%.job!==merchant set "rpg.hud.l10=Choose an item to sell:" & set "rpg.hud.invaction=Sell"
 )
 ::list items
 if defined rpg.hud.inv[1] for /f "delims=^=" %%c in ('set rpg.hud.inv[') do set %%c=
 set /a "rpg.hud.invslot=0"
-if %rpg.hud.invaction%==Buy (
-	for /f "tokens=1-5 delims=.^=" %%i in ('set rpg.item.') do (
-		::item=%%k ::property=%%l ::value=%%m
-		if %%l==slot if %%m==weapon set /a "rpg.hud.invslot+=1"
-		if %%l==slot if %%m==weapon set "rpg.hud.inv[!rpg.hud.invslot!]=%%k"
-	)
-) else (
+set "rpg.hud.invtype=owned"
+if defined rpg.world.%rpg.user.loc%.job if not !rpg.world.%rpg.user.loc%.job!==merchant set "rpg.hud.invtype=shop"
+if %rpg.hud.invtype%==owned (
 	for /f "tokens=1-4 delims=.^=" %%i in ('set rpg.inv.') do (
 		::item=%%k quantity=%%l
 		if %%l GEQ 1 set /a "rpg.hud.invslot+=1"
 		if %%l GEQ 1 set "rpg.hud.inv[!rpg.hud.invslot!]=%%k"
 	)
+) else (
+	if !rpg.world.%rpg.user.loc%.job!==weaponsm set "rpg.hud.invslots=weapon"
+	if !rpg.world.%rpg.user.loc%.job!==armorsm set "rpg.hud.invslots=head torso arms belt legs feet shield"
+	for /f "tokens=1-5 delims=.^=" %%i in ('set rpg.item.') do (
+		::item=%%k ::property=%%l ::value=%%m
+		for %%s in (!rpg.hud.invslots!) do (
+			if %%l==slot if %%m==%%s set /a "rpg.hud.invslot+=1" 
+			if %%l==slot if %%m==%%s set "rpg.hud.inv[!rpg.hud.invslot!]=%%k"
+		)
+	)
 )
+
 ::set pages
 if not defined rpg.hud.invpage set rpg.hud.invpage=1
 set /a "rpg.hud.invpages=1+(rpg.hud.invslot-1)/10"
