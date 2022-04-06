@@ -1,17 +1,19 @@
 @echo off
 setlocal enableextensions
 setlocal enabledelayedexpansion
+
+set "appname=Test RPG"
+set "appdate=April 6, 2022"
+set "appver=0.8.2-alpha"
 ::
+::0.8.3 code optimization
 ::0.8.2 fixed selling price ratio
 ::0.8.1 added tavern job
 ::0.8.0 added shop code
 ::
-set "appname=Test RPG"
-set "appver=0.8.2-alpha"
-set "appdate=April 5, 2022"
-title %appname% v%appver% - %appdate%
 
 :init
+title %appname% v%appver% - %appdate%
 set rpg.init=true
 for /f "delims=^=" %%i in ('set rpg.') do set %%i=
 set "rpg.hud.color=color 07"
@@ -137,7 +139,7 @@ if %rpg.user.status%==fight set "rpg.hud.l16= HP %rpg.hud.foebar% %rpg.enemy.hp%
 if not "%rpg.hud.inventory%"=="open" goto :hudinventoryclosed
 :hudinventoryopen
 
-::detect job
+::detect job and set action
 set "rpg.hud.l10=Inventory:" & set "rpg.hud.invaction=Use"
 if defined rpg.world.%rpg.user.loc%.job (
 	set "rpg.hud.l10=Choose an item to buy:" & set "rpg.hud.invaction=Buy"
@@ -240,6 +242,7 @@ if defined rpg.world.%rpg.user.loc%.dirS set "rpg.hud.mov=%rpg.hud.mov%[S] !rpg.
 if defined rpg.world.%rpg.user.loc%.dirE set "rpg.hud.tmp=!rpg.world.%rpg.user.loc%.dirE!"
 if defined rpg.world.%rpg.user.loc%.dirE set "rpg.hud.mov=%rpg.hud.mov%[D] !rpg.world.%rpg.hud.tmp%.name! "
 
+::print new location
 if not defined rpg.hud.input set "rpg.hud.input=W"
 for %%d in (W,S,A,D) do if [%rpg.hud.input%]==[%%d] (
 	call :addline Location: !rpg.world.%rpg.user.loc%.name!
@@ -251,6 +254,8 @@ for %%d in (W,S,A,D) do if [%rpg.hud.input%]==[%%d] (
 ::fill hud rows
 for /l %%l in (1,1,%rpg.hud.lines%) do set "rpg.hud.l%%l=!rpg.hud.l%%l!%rpg.hud.spacer%"
 for /l %%l in (1,1,%rpg.hud.lines%) do if not defined rpg.hud.r%%l set "rpg.hud.r%%l=%rpg.hud.filler%"
+
+::print screen
 :display
 %rpg.hud.color%
 cls
@@ -263,14 +268,12 @@ if not defined rpg.world.%rpg.user.loc%.dirs set rpg.hud.choice=%rpg.hud.choice:
 if not defined rpg.world.%rpg.user.loc%.dirw set rpg.hud.choice=%rpg.hud.choice:A=%
 if not defined rpg.world.%rpg.user.loc%.dire set rpg.hud.choice=%rpg.hud.choice:D=%
 
-::pre-choice timer
+::post execution time
 if defined rpg.time set /a "rpg.time+=1%time:~-10,1%%time:~-8,2%%time:~-5,2%%time:~-2,2%"
 set "rpg.hud.message=Ping (%rpg.time%0ms)%rpg.hud.spacer%"
 
 ::choice
 choice /n /c %rpg.hud.choice% /d E /t %rpg.delay% /m "!rpg.hud.message:~0,%rpg.hud.left%!  #"
-::post-choice timer
-set /a "rpg.time=-1%time:~-10,1%%time:~-8,2%%time:~-5,2%%time:~-2,2%"
 
 ::player input
 :: need to implement actions like mining, fishing, crafting, ecc.
@@ -307,6 +310,10 @@ if [%rpg.hud.input%]==[7] set "rpg.hud.action=use"
 if [%rpg.hud.input%]==[8] set "rpg.hud.action=use"
 if [%rpg.hud.input%]==[9] set "rpg.hud.action=use"
 if [%rpg.hud.input%]==[0] set /a "rpg.hud.input=10" & set "rpg.hud.action=use"
+
+::pre execution time
+set /a "rpg.time=-1%time:~-10,1%%time:~-8,2%%time:~-5,2%%time:~-2,2%"
+
 goto :%rpg.hud.action%
 goto :eof
 
@@ -362,13 +369,29 @@ if %rpg.user.pw% LSS %rpg.user.pwmax% set /a "rpg.user.pw+=rpg.user.pwmax*3/100"
 goto :loop
 goto :eof
 
+:equipment
+if "%rpg.hud.equipment%"=="open" (set "rpg.hud.equipment=closed") else (set "rpg.hud.equipment=open" & set "rpg.hud.inventory=closed")
+goto :loop
+goto :eof
+
 :inventory
 if "%rpg.hud.inventory%"=="open" (set "rpg.hud.inventory=closed") else (set "rpg.hud.inventory=open" & set "rpg.hud.equipment=closed")
 goto :loop
 goto :eof
 
-:equipment
-if "%rpg.hud.equipment%"=="open" (set "rpg.hud.equipment=closed") else (set "rpg.hud.equipment=open" & set "rpg.hud.inventory=closed")
+:use
+if %rpg.hud.equipment%==open goto :unequip
+if %rpg.hud.invaction%==Sell goto :sell
+if %rpg.hud.invaction%==Buy goto :buy
+set /a rpg.hud.input+=10*(rpg.hud.invpage-1)
+set rpg.hud.use=!rpg.hud.inv[%rpg.hud.input%]!
+if defined rpg.item.%rpg.hud.use%.slot if not defined rpg.user.!rpg.item.%rpg.hud.use%.slot! (
+	set "rpg.user.!rpg.item.%rpg.hud.use%.slot!=%rpg.hud.use%"
+	set /a "rpg.inv.%rpg.hud.use%-=1"
+	call :addline You equip !rpg.item.%rpg.hud.use%.name!.
+) else (
+	call :addline You are already using a similar item.
+	)
 goto :loop
 goto :eof
 
@@ -405,22 +428,6 @@ call :addline You gain %rpg.drop.xp% XP and %rpg.drop.gold% gold.
 if defined rpg.drop.id call :addline *** You found a !rpg.item.%rpg.drop.id%.name! ***
 call :addline
 call :clear
-goto :loop
-goto :eof
-
-:use
-if %rpg.hud.equipment%==open goto :unequip
-if %rpg.hud.invaction%==Sell goto :sell
-if %rpg.hud.invaction%==Buy goto :buy
-set /a rpg.hud.input+=10*(rpg.hud.invpage-1)
-set rpg.hud.use=!rpg.hud.inv[%rpg.hud.input%]!
-if defined rpg.item.%rpg.hud.use%.slot if not defined rpg.user.!rpg.item.%rpg.hud.use%.slot! (
-	set "rpg.user.!rpg.item.%rpg.hud.use%.slot!=%rpg.hud.use%"
-	set /a "rpg.inv.%rpg.hud.use%-=1"
-	call :addline You equip !rpg.item.%rpg.hud.use%.name!.
-) else (
-	call :addline You are already using a similar item.
-	)
 goto :loop
 goto :eof
 
