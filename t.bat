@@ -331,10 +331,10 @@ goto :eof
 :engage
 ::this is skipped if user is already in fight
 if defined rpg.enemy.id goto :fight
-::chance to fight is 1 over 8/ndir
+::chance to fight is 1 over 8*ndir
 set /a "rpg.enemy.chance=0"
 for /f %%d in ('set rpg.world.%rpg.user.loc%.dir') do set /a "rpg.enemy.chance+=1"
-set /a "rpg.enemy.chance=1+8/rpg.enemy.chance"
+set /a "rpg.enemy.chance*=8"
 set /a "rpg.enemy.rnd=%random% %%rpg.enemy.chance"
 if %rpg.enemy.rnd% GTR 0 goto :wait
 ::fight is on
@@ -403,9 +403,8 @@ if %rpg.user.hp% EQU 0 goto :death
 if %rpg.enemy.hp% EQU 0 goto :victory
 if %rpg.user.action%==attack (set "rpg.user.action=defend") else (set "rpg.user.action=attack")
 if %rpg.user.action%==attack (call :dmgcalc %rpg.user.level% %rpg.enemy.str% %rpg.user.dps% %rpg.enemy.arm% %rpg.enemy.level%) else (call :dmgcalc %rpg.enemy.level% %rpg.user.str% 0 %rpg.user.arm% %rpg.user.level%)
-if %rpg.user.action%==attack (call :addline You hit %rpg.enemy.name% for %rpg.dmg.val% damage.) else (call :addline %rpg.enemy.name% hits you for %rpg.dmg.val% damage.)
+if %rpg.dmg.val% GTR 0 if %rpg.user.action%==attack (call :addline You hit %rpg.enemy.name% for %rpg.dmg.val% damage.) else (color C7 & call :addline %rpg.enemy.name% hits you for %rpg.dmg.val% damage.)
 if %rpg.user.action%==attack (set /a "rpg.enemy.hp-=rpg.dmg.val") else (set /a "rpg.user.hp-=rpg.dmg.val")
-if %rpg.user.action%==defend color C7
 if %rpg.user.hp% LEQ 0 set /a "rpg.user.hp=0"
 if %rpg.enemy.hp% LEQ 0 set /a "rpg.enemy.hp=0"
 goto :loop
@@ -424,7 +423,7 @@ goto :eof
 :victory
 call :addline %rpg.enemy.name% died.
 call :reward
-call :addline You gain %rpg.drop.xp% XP and %rpg.drop.gold% gold.
+call :addline You gain %rpg.drop.xp% XP (%rpg.drop.xpratio%%%%% of cap) and %rpg.drop.gold% gold.
 if defined rpg.drop.id call :addline *** You found a !rpg.item.%rpg.drop.id%.name! ***
 call :addline
 call :clear
@@ -474,16 +473,19 @@ set /a "rpg.dmg.rnd=(%random% %%50)+100"
 set /a "rpg.dmg.attlev=%1"
 set /a "rpg.dmg.attstr=%2"
 set /a "rpg.dmg.wepdps=%3"
-set /a "rpg.dmg.arm=%4"
+set /a "rpg.dmg.defarm=%4"
 set /a "rpg.dmg.deflev=%5"
 set /a "rpg.dmg.attdps=1+%rpg.dmg.attlev%/3+%rpg.dmg.wepdps%"
-set /a "rpg.dmg.val=(1+rpg.dmg.attlev/3+rpg.dmg.wepdps)*rpg.dmg.attstr*(100-rpg.dmg.arm)/100*(100*rpg.dmg.attlev/rpg.dmg.deflev)/100*(100+rpg.dmg.rnd)/100"
+set /a "rpg.dmg.val=(rpg.dmg.attlev+rpg.dmg.attstr+rpg.dmg.wepdps-rpg.dmg.deflev)*rpg.dmg.rnd*(100-rpg.dmg.defarm)/5000*rpg.dmg.attlev/rpg.dmg.deflev"
 exit /b
 
 :reward
 ::get xp
-set /a "rpg.drop.xp=25*rpg.enemy.level*(rpg.enemy.level+1)/(10+rpg.enemy.level/3)"
-set /a "rpg.drop.gold=(%random% %%rpg.enemy.level)+1+rpg.enemy.level/10"
+set /a "rpg.drop.xp=25*(rpg.enemy.level+1)*rpg.enemy.level/rpg.enemy.level"
+set /a "rpg.drop.xpcap=25*(rpg.enemy.level+1)*rpg.enemy.level/rpg.user.level"
+if %rpg.drop.xp% GTR %rpg.drop.xpcap% set /a "rpg.drop.xp=rpg.drop.xpcap"
+set /a "rpg.drop.xpratio=rpg.drop.xp*100/rpg.drop.xpcap"
+set /a "rpg.drop.gold=(%random% %%rpg.enemy.level)+1+(rpg.enemy.level/10)"
 ::parse drop vals
 set /a "rpg.drop.count=0"
 set /a "rpg.drop.max=rpg.enemy.level*3"
