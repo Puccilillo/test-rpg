@@ -21,8 +21,8 @@ The main features are:
 - Advanced damage calculation involving dps and armor resist
 - Working health and power regeneration overtime
 - Sellable loot to merchant
+- Working armor/weapon vendors
 
 # PLANNED FEATURES
 - Crafting and gathering skills
-- Working armor/weapon vendors
-- Game map expansion
+- Game map expansion (overtime)
