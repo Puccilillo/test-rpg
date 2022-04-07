@@ -3,9 +3,10 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 
 set "appname=Test RPG"
-set "appdate=April 6, 2022"
-set "appver=0.8.2-alpha"
+set "appdate=April 7, 2022"
+set "appver=0.8.4-alpha"
 ::
+::0.8.4 added switching item if slot is already used
 ::0.8.3 code optimization
 ::0.8.2 fixed selling price ratio
 ::0.8.1 added tavern job
@@ -385,13 +386,13 @@ if %rpg.hud.invaction%==Sell goto :sell
 if %rpg.hud.invaction%==Buy goto :buy
 set /a rpg.hud.input+=10*(rpg.hud.invpage-1)
 set rpg.hud.use=!rpg.hud.inv[%rpg.hud.input%]!
-if defined rpg.item.%rpg.hud.use%.slot if not defined rpg.user.!rpg.item.%rpg.hud.use%.slot! (
+::equip or switch
+if defined rpg.item.%rpg.hud.use%.slot (
+	if defined rpg.user.!rpg.item.%rpg.hud.use%.slot! call set /a rpg.inv.%%rpg.user.!rpg.item.%rpg.hud.use%.slot!%%+=1
 	set "rpg.user.!rpg.item.%rpg.hud.use%.slot!=%rpg.hud.use%"
 	set /a "rpg.inv.%rpg.hud.use%-=1"
-	call :addline You equip !rpg.item.%rpg.hud.use%.name!.
-) else (
-	call :addline You are already using a similar item.
-	)
+	call :addline You are now using !rpg.item.%rpg.hud.use%.name!.
+)
 goto :loop
 goto :eof
 
