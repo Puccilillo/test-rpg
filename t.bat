@@ -53,11 +53,13 @@ if not defined rpg.hud.xpm200 for /l %%m in (1,1,200) do set /a "rpg.hud.xpm%%m=
 :loop
 
 :findlevel
-for /l %%l in (1,1,200) do if %rpg.user.xp% GEQ !rpg.hud.xpm%%l! set /a "rpg.user.level=%%l"
+set "rpg.user.level="
+for /l %%l in (200,-1,1) do if defined rpg.user.level (goto :foundlevel) else (if %rpg.user.xp% GEQ !rpg.hud.xpm%%l! set /a "rpg.user.level=%%l")
+
+:foundlevel
 
 ::calc XPMAX=25*L*(L+1) XPMIN=25*L*(L-1)
-set /a "rpg.user.xpmax=rpg.hud.xpx%rpg.user.level%"
-set /a "rpg.user.xpmin=rpg.hud.xpm%rpg.user.level%"
+set /a "rpg.user.xpmax=rpg.hud.xpx%rpg.user.level%, rpg.user.xpmin=rpg.hud.xpm%rpg.user.level%"
 set /a "rpg.user.xpcur=rpg.user.xp-rpg.user.xpmin"
 set /a "rpg.user.xplev=rpg.user.xpmax-rpg.user.xpmin"
 
