@@ -464,20 +464,21 @@ goto :eof
 
 :: #################################### SUBS ############################################ ::
 
-:barcalc <variable> <value> <max value>
+:barcalc <bar name> <value> <max value>
 set /a "progress=rpg.hud.barsize-(rpg.hud.barsize*%2/%3)"
 set "rpg.hud.%1=[!rpg.hud.bar:~%progress%,%rpg.hud.barsize%!]"
 exit /b
 
-:dmgcalc <attacker level> <attacker str> <weapon dps> <defender af> <defender level>
+:dmgcalc <attlev> <attstr> <wepdps> <defarm> <deflev>
 set /a "rpg.dmg.rnd=(%random% %%50)+100"
 set /a "rpg.dmg.attlev=%1"
 set /a "rpg.dmg.attstr=%2"
 set /a "rpg.dmg.wepdps=%3"
 set /a "rpg.dmg.defarm=%4"
 set /a "rpg.dmg.deflev=%5"
-set /a "rpg.dmg.attdps=1+%rpg.dmg.attlev%/3+%rpg.dmg.wepdps%"
-set /a "rpg.dmg.val=(rpg.dmg.attlev+rpg.dmg.attstr+rpg.dmg.wepdps-rpg.dmg.deflev)*rpg.dmg.rnd*(100-rpg.dmg.defarm)/5000*rpg.dmg.attlev/rpg.dmg.deflev"
+set /a "rpg.dmg.attdps=1+%rpg.dmg.attlev%/3"
+set /a "rpg.dmg.attdmg=rpg.dmg.attlev*(rpg.dmg.attdps+rpg.dmg.wepdps)*rpg.dmg.attstr"
+set /a "rpg.dmg.val=rpg.dmg.attdmg*rpg.dmg.rnd/100*(100-rpg.dmg.defarm)/rpg.dmg.deflev/100"
 exit /b
 
 :reward
