@@ -1,11 +1,13 @@
 @echo off
 setlocal enableextensions
 setlocal enabledelayedexpansion
-
 set "appname=Test RPG"
 set "appdate=April 7, 2022"
-set "appver=0.8.4-alpha"
+set "appver=0.8.7-alpha"
 ::
+::0.8.7 fixed level detection code
+::0.8.6 more code optimization
+::0.8.5 changed dmgcalc formula
 ::0.8.4 added switching item if slot is already used
 ::0.8.3 code optimization
 ::0.8.2 fixed selling price ratio
@@ -29,7 +31,8 @@ set "rpg.map.full=[ ]"
 set "rpg.map.empty=.:."
 set /a "rpg.inv.nullitem=0"
 set /a "rpg.delay=3"
-set "rpg.hud.keys=WSADQERUIKGHXV"
+set "rpg.hud.adminkeys=GHKXV"
+set "rpg.hud.keys=WSADQERUI%rpg.hud.adminkeys%"
 for /l %%b in (1,1,%rpg.hud.barsize%) do set "rpg.hud.bar=/!rpg.hud.bar!-"
 for /l %%s in (1,1,%rpg.hud.left%) do set "rpg.hud.spacer=!rpg.hud.spacer! "
 for /l %%f in (1,2,%rpg.hud.right%) do set "rpg.hud.filler=!rpg.hud.filler!.:"
@@ -38,27 +41,23 @@ for /l %%f in (1,2,%rpg.hud.right%) do set "rpg.hud.filler=!rpg.hud.filler!.:"
 for /f "delims=" %%w in (world.dat) do set "rpg.world.%%w"
 for /f "delims=" %%m in (enemies.dat) do set "rpg.enemy.%%m"
 for /f "delims=" %%e in (items.dat) do set "rpg.item.%%e"
+
+::look for saved game or create new
 if exist user.sav (for /f "delims=" %%u in (user.sav) do set "%%u") else (set /a "rpg.user.xp=0, rpg.user.hp=1, rpg.user.gold=0, rpg.user.pw=0")
 if not defined rpg.user.name set /p "rpg.user.name=Enter you name:"
 if not defined rpg.user.class set "rpg.user.class=Warrior"
 if not defined rpg.user.loc set "rpg.user.loc=spawn"
 if not defined rpg.user.status set "rpg.user.status=idle"
+if not defined rpg.hud.xpm200 for /l %%m in (1,1,200) do set /a "rpg.hud.xpm%%m=25*%%m*(%%m-1), rpg.hud.xpx%%m=25*%%m*(%%m+1)"
 
 :loop
 
 :findlevel
-::set level based on xp
-if not defined rpg.findn set /a "rpg.findn=0"
-set /a "rpg.findn+=1"
-set /a "rpg.findx=25*rpg.findn*(rpg.findn+1)"
-if %rpg.findx% GTR %rpg.user.xp% (set /a "rpg.user.level=rpg.findn") else (goto :findlevel)
-set "rpg.findn="
-set "rpg.findx="
-set "rpg.user.xpmax="
+for /l %%l in (1,1,200) do if %rpg.user.xp% GEQ !rpg.hud.xpm%%l! set /a "rpg.user.level=%%l"
 
 ::calc XPMAX=25*L*(L+1) XPMIN=25*L*(L-1)
-set /a "rpg.user.xpmax=25*rpg.user.level*(rpg.user.level+1)"
-set /a "rpg.user.xpmin=25*rpg.user.level*(rpg.user.level-1)"
+set /a "rpg.user.xpmax=rpg.hud.xpx%rpg.user.level%"
+set /a "rpg.user.xpmin=rpg.hud.xpm%rpg.user.level%"
 set /a "rpg.user.xpcur=rpg.user.xp-rpg.user.xpmin"
 set /a "rpg.user.xplev=rpg.user.xpmax-rpg.user.xpmin"
 
