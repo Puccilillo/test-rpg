@@ -36,6 +36,7 @@ set "rpg.hud.keys=WSADQERUI%rpg.hud.adminkeys%"
 for /l %%b in (1,1,%rpg.hud.barsize%) do set "rpg.hud.bar=/!rpg.hud.bar!-"
 for /l %%s in (1,1,%rpg.hud.left%) do set "rpg.hud.spacer=!rpg.hud.spacer! "
 for /l %%f in (1,2,%rpg.hud.right%) do set "rpg.hud.filler=!rpg.hud.filler!.:"
+for /l %%m in (1,1,200) do set /a "rpg.hud.xpm%%m=25*%%m*(%%m-1), rpg.hud.xpx%%m=25*%%m*(%%m+1)"
 
 :load
 for /f "delims=" %%w in (world.dat) do set "rpg.world.%%w"
@@ -43,12 +44,7 @@ for /f "delims=" %%m in (enemies.dat) do set "rpg.enemy.%%m"
 for /f "delims=" %%e in (items.dat) do set "rpg.item.%%e"
 
 ::look for saved game or create new
-if exist user.sav (for /f "delims=" %%u in (user.sav) do set "%%u") else (set /a "rpg.user.xp=0, rpg.user.hp=1, rpg.user.gold=0, rpg.user.pw=0")
-if not defined rpg.user.name set /p "rpg.user.name=Enter you name:"
-if not defined rpg.user.class set "rpg.user.class=Warrior"
-if not defined rpg.user.loc set "rpg.user.loc=spawn"
-if not defined rpg.user.status set "rpg.user.status=idle"
-if not defined rpg.hud.xpm200 for /l %%m in (1,1,200) do set /a "rpg.hud.xpm%%m=25*%%m*(%%m-1), rpg.hud.xpx%%m=25*%%m*(%%m+1)"
+if exist user.sav (for /f "delims=" %%u in (user.sav) do set "%%u") else goto :create
 
 :loop
 
@@ -321,6 +317,15 @@ goto :eof
 
 :: #################################### ACTIONS ##########################################::
 
+:create
+cls
+set /p "rpg.user.name=Enter you name:"
+set "rpg.user.class=Warrior"
+set /a "rpg.user.xp=0, rpg.user.hp=1, rpg.user.gold=0, rpg.user.pw=0")
+set "rpg.user.loc=spawn"
+set "rpg.user.status=idle"
+goto:loop
+
 :quit
 cls
 ::Saving user and whatelse?
@@ -369,17 +374,14 @@ goto :loop
 if %rpg.user.hp% LSS %rpg.user.hpmax% set /a "rpg.user.hp+=rpg.user.hpmax*3/100"
 if %rpg.user.pw% LSS %rpg.user.pwmax% set /a "rpg.user.pw+=rpg.user.pwmax*3/100"
 goto :loop
-goto :eof
 
 :equipment
 if "%rpg.hud.equipment%"=="open" (set "rpg.hud.equipment=closed") else (set "rpg.hud.equipment=open" & set "rpg.hud.inventory=closed")
 goto :loop
-goto :eof
 
 :inventory
 if "%rpg.hud.inventory%"=="open" (set "rpg.hud.inventory=closed") else (set "rpg.hud.inventory=open" & set "rpg.hud.equipment=closed")
 goto :loop
-goto :eof
 
 :use
 if %rpg.hud.equipment%==open goto :unequip
@@ -395,7 +397,6 @@ if defined rpg.item.%rpg.hud.use%.slot (
 	call :addline You are now using !rpg.item.%rpg.hud.use%.name!.
 )
 goto :loop
-goto :eof
 
 :: #################################### REACTIONS ####################################### ::
 
@@ -420,7 +421,6 @@ echo Press any key...
 pause > nul
 call :clear
 goto :init
-goto :eof
 
 :victory
 call :addline %rpg.enemy.name% died.
@@ -430,7 +430,6 @@ if defined rpg.drop.id call :addline *** You found a !rpg.item.%rpg.drop.id%.nam
 call :addline
 call :clear
 goto :loop
-goto :eof
 
 :unequip
 set rpg.hud.unequip=!rpg.hud.unequip[%rpg.hud.input%]!
@@ -439,7 +438,6 @@ call :addline You remove !rpg.item.%rpg.hud.unequipitem%.name! and put it in you
 if defined rpg.user.%rpg.hud.unequip% set /a "rpg.inv.%rpg.hud.unequipitem%+=1"
 set "rpg.user.%rpg.hud.unequip%="
 goto :loop
-goto :eof
 
 :sell
 set /a rpg.hud.input+=10*(rpg.hud.invpage-1)
@@ -449,7 +447,6 @@ set /a "rpg.user.gold+=rpg.hud.sellprice"
 set /a "rpg.inv.%rpg.hud.sell%-=1"
 call :addline You sold !rpg.item.%rpg.hud.sell%.name! for %rpg.hud.sellprice% gold.
 goto :loop
-goto :eof
 
 :buy
 set /a rpg.hud.input+=10*(rpg.hud.invpage-1)
@@ -461,7 +458,6 @@ goto :loop
 :cantbuy
 call :addline You need %rpg.hud.buyprice%g to buy !rpg.item.%rpg.hud.buy%.name!.
 goto :loop
-goto :eof
 
 :: #################################### SUBS ############################################ ::
 
@@ -484,8 +480,8 @@ exit /b
 
 :reward
 ::get xp
-set /a "rpg.drop.xp=25*(rpg.enemy.level+1)*rpg.enemy.level/rpg.enemy.level"
-set /a "rpg.drop.xpcap=25*(rpg.enemy.level+1)*rpg.enemy.level/rpg.user.level"
+set /a "rpg.drop.xp=25*(rpg.enemy.level+1)*rpg.enemy.level/rpg.enemy.level*rpg.enemy.level/rpg.user.level"
+set /a "rpg.drop.xpcap=30*(rpg.user.level+1)*rpg.user.level/rpg.user.level"
 if %rpg.drop.xp% GTR %rpg.drop.xpcap% set /a "rpg.drop.xp=rpg.drop.xpcap"
 set /a "rpg.drop.xpratio=rpg.drop.xp*100/rpg.drop.xpcap"
 set /a "rpg.drop.gold=(%random% %%rpg.enemy.level)+1+(rpg.enemy.level/10)"
