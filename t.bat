@@ -3,8 +3,11 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set "appname=Test RPG"
 set "appdate=April 7, 2022"
-set "appver=0.8.8-alpha"
+set "appver=0.8.11-alpha"
 ::
+::0.8.11 added minimap indicators
+::0.8.10 minimap code optimization
+::0.8.9 raised mob count for leveling
 ::0.8.8 fixed code for xp reward and xp cap
 ::0.8.7 fixed level detection code
 ::0.8.6 more code optimization
@@ -29,6 +32,8 @@ set /a "rpg.hud.left=39"
 set /a "rpg.hud.right=rpg.hud.cols-rpg.hud.left-5"
 set /a "rpg.hud.barsize=(rpg.hud.left+1)/2"
 set "rpg.map.full=[ ]"
+set "rpg.map.enc=[#]"
+set "rpg.map.job=[$]"
 set "rpg.map.empty=.:."
 set /a "rpg.inv.nullitem=0"
 set /a "rpg.delay=3"
@@ -91,20 +96,25 @@ call :barcalc pwbar %rpg.user.pw% %rpg.user.pwmax%
 call :barcalc xpbar %rpg.user.xpcur% %rpg.user.xplev%
 if %rpg.user.status%==fight call :barcalc foebar %rpg.enemy.hp% %rpg.enemy.hpmax%
 
-::set minimap
+::clear minimap
 for %%d in (N,S,W,E,NW,NE,SW,SE) do set "rpg.map.dir%%d=%rpg.map.empty%" 
-if defined rpg.world.%rpg.user.loc%.dirN set "rpg.map.dirN=%rpg.map.full%"
-if defined rpg.world.%rpg.user.loc%.dirS set "rpg.map.dirS=%rpg.map.full%"
-if defined rpg.world.%rpg.user.loc%.dirW set "rpg.map.dirW=%rpg.map.full%"
-if defined rpg.world.%rpg.user.loc%.dirE set "rpg.map.dirE=%rpg.map.full%"
-if defined rpg.world.!rpg.world.%rpg.user.loc%.dirN!.dirW set "rpg.map.dirNW=%rpg.map.full%"
-if defined rpg.world.!rpg.world.%rpg.user.loc%.dirW!.dirN set "rpg.map.dirNW=%rpg.map.full%"
-if defined rpg.world.!rpg.world.%rpg.user.loc%.dirN!.dirE set "rpg.map.dirNE=%rpg.map.full%"
-if defined rpg.world.!rpg.world.%rpg.user.loc%.dirE!.dirN set "rpg.map.dirNE=%rpg.map.full%"
-if defined rpg.world.!rpg.world.%rpg.user.loc%.dirS!.dirW set "rpg.map.dirSW=%rpg.map.full%"
-if defined rpg.world.!rpg.world.%rpg.user.loc%.dirW!.dirS set "rpg.map.dirSW=%rpg.map.full%"
-if defined rpg.world.!rpg.world.%rpg.user.loc%.dirS!.dirE set "rpg.map.dirSE=%rpg.map.full%"
-if defined rpg.world.!rpg.world.%rpg.user.loc%.dirE!.dirS set "rpg.map.dirSE=%rpg.map.full%"
+
+::set minimap
+for %%d in (N,S,W,E) do if defined rpg.world.%rpg.user.loc%.dir%%d (
+	set "rpg.map.dir%%d=%rpg.map.full%"
+	if defined rpg.world.!rpg.world.%rpg.user.loc%.dir%%d!.enc set "rpg.map.dir%%d=%rpg.map.enc%"
+	if defined rpg.world.!rpg.world.%rpg.user.loc%.dir%%d!.job set "rpg.map.dir%%d=%rpg.map.job%"
+)
+for %%d in (N,S) do for %%s in (W,E) do (
+	call set rpg.map.loc=%%rpg.world.!rpg.world.%rpg.user.loc%.dir%%d!.dir%%s%%
+	if defined rpg.map.loc set "rpg.map.dir%%d%%s=%rpg.map.full%"
+	if defined rpg.world.!rpg.map.loc!.enc set "rpg.map.dir%%d%%s=%rpg.map.enc%"
+	if defined rpg.world.!rpg.map.loc!.job set "rpg.map.dir%%d%%s=%rpg.map.job%"
+	call set rpg.map.loc=%%rpg.world.!rpg.world.%rpg.user.loc%.dir%%s!.dir%%d%%
+	if defined rpg.map.loc set "rpg.map.dir%%d%%s=%rpg.map.full%"
+	if defined rpg.world.!rpg.map.loc!.enc set "rpg.map.dir%%d%%s=%rpg.map.enc%"
+	if defined rpg.world.!rpg.map.loc!.job set "rpg.map.dir%%d%%s=%rpg.map.job%"
+) 
 
 ::controls set definition
 set "rpg.hud.cont= [U] Equipment [I] Inventory"
@@ -482,8 +492,8 @@ exit /b
 
 :reward
 ::get xp
-set /a "rpg.drop.xp=25*(rpg.enemy.level+1)*rpg.enemy.level/rpg.enemy.level*rpg.enemy.level/rpg.user.level"
-set /a "rpg.drop.xpcap=30*(rpg.user.level+1)*rpg.user.level/rpg.user.level"
+set /a "rpg.drop.xp=25*(rpg.enemy.level+1)*rpg.enemy.level/(rpg.enemy.level+10)*rpg.enemy.level/rpg.user.level"
+set /a "rpg.drop.xpcap=30*(rpg.user.level+1)*rpg.user.level/(rpg.user.level+10)"
 if %rpg.drop.xp% GTR %rpg.drop.xpcap% set /a "rpg.drop.xp=rpg.drop.xpcap"
 set /a "rpg.drop.xpratio=rpg.drop.xp*100/rpg.drop.xpcap"
 set /a "rpg.drop.gold=(%random% %%rpg.enemy.level)+1+(rpg.enemy.level/10)"
