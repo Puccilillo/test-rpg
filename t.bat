@@ -323,7 +323,7 @@ goto :eof
 cls
 set /p "rpg.user.name=Enter you name:"
 set "rpg.user.class=Warrior"
-set /a "rpg.user.xp=0, rpg.user.hp=1, rpg.user.gold=0, rpg.user.pw=0")
+set /a "rpg.user.xp=0, rpg.user.hp=1, rpg.user.gold=0, rpg.user.pw=0"
 set "rpg.user.loc=spawn"
 set "rpg.user.status=idle"
 goto:loop
