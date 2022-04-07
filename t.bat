@@ -3,8 +3,9 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set "appname=Test RPG"
 set "appdate=April 7, 2022"
-set "appver=0.8.7-alpha"
+set "appver=0.8.8-alpha"
 ::
+::0.8.8 fixed code for xp reward and xp cap
 ::0.8.7 fixed level detection code
 ::0.8.6 more code optimization
 ::0.8.5 changed dmgcalc formula
@@ -318,6 +319,7 @@ goto :eof
 :: #################################### ACTIONS ##########################################::
 
 :create
+::Character creation.... here!
 cls
 set /p "rpg.user.name=Enter you name:"
 set "rpg.user.class=Warrior"
