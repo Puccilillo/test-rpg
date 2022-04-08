@@ -2,9 +2,11 @@
 setlocal enableextensions
 setlocal enabledelayedexpansion
 set "appname=Test RPG"
-set "appdate=April 7, 2022"
-set "appver=0.8.11-alpha"
+set "appdate=April 8, 2022"
+set "appver=0.8.13-alpha"
 ::
+::0.8.13 location code optimization
+::0.8.12 interface auto open/close when entering shops
 ::0.8.11 added minimap indicators
 ::0.8.10 minimap code optimization
 ::0.8.9 raised mob count for leveling
@@ -116,12 +118,26 @@ for %%d in (N,S) do for %%s in (W,E) do (
 	if defined rpg.world.!rpg.map.loc!.job set "rpg.map.dir%%d%%s=%rpg.map.job%"
 ) 
 
-::controls set definition
+::directions set
+set rpg.hud.mov=
+for %%d in (N,S,W,E) do if defined rpg.world.%rpg.user.loc%.dir%%d set "rpg.hud.tmp=!rpg.world.%rpg.user.loc%.dir%%d!" & set "rpg.hud.mov=!rpg.hud.mov![%%d] %%rpg.world.!rpg.hud.tmp!.name%% "
+
+::print new location
+if not defined rpg.hud.input set "rpg.hud.input=W"
+for %%d in (W,S,A,D) do if [%rpg.hud.input%]==[%%d] (
+	call :addline Location: !rpg.world.%rpg.user.loc%.name!
+	if defined rpg.world.%rpg.user.loc%.desc call :addline "!rpg.world.%rpg.user.loc%.desc!"
+	if defined rpg.world.%rpg.user.loc%.job (set "rpg.hud.inventory=open") else (set "rpg.hud.inventory=closed")
+	call :addline Directions: %rpg.hud.mov%
+	call :addline
+	)
+
+::controls description
 set "rpg.hud.cont= [U] Equipment [I] Inventory"
 set "rpg.hud.cont2= [Q] Quit"
 if %rpg.user.status%==fight (set "rpg.hud.cont2=%rpg.hud.cont2% [E] Fight") else (set "rpg.hud.cont2=%rpg.hud.cont2% [E] Wait")
 
-::clear hud
+::clear hud lines
 for /l %%l in (1,1,%rpg.hud.lines%) do set "rpg.hud.l%%l="
 set "rpg.hud.invkeys="
 
@@ -207,7 +223,7 @@ for /l %%l in (%rpg.hud.invmin%,1,%rpg.hud.invmax%) do (
 ::add inventory controls
 set "rpg.hud.cont2=%rpg.hud.cont2% [0-9] %rpg.hud.invaction%"
 
-::add pages
+::add pages indicator
 if %rpg.hud.invpages% GTR 1 (
 	set "rpg.hud.invbar="
 	for /l %%p in (1,1,%rpg.hud.invpages%) do if %rpg.hud.invpage% EQU %%p (set "rpg.hud.invbar=!rpg.hud.invbar!#") else (set "rpg.hud.invbar=!rpg.hud.invbar!-")
@@ -239,26 +255,6 @@ set "rpg.hud.cont2=%rpg.hud.cont2% [0-9] Unequip"
 set "rpg.hud.l25=Controls:"
 set "rpg.hud.l26=%rpg.hud.cont:~0,40%"
 set "rpg.hud.l27=%rpg.hud.cont2:~0,40%"
-
-::directions set
-set rpg.hud.mov=
-if defined rpg.world.%rpg.user.loc%.dirN set "rpg.hud.tmp=!rpg.world.%rpg.user.loc%.dirN!"
-if defined rpg.world.%rpg.user.loc%.dirN set "rpg.hud.mov=[W] !rpg.world.%rpg.hud.tmp%.name! "
-if defined rpg.world.%rpg.user.loc%.dirW set "rpg.hud.tmp=!rpg.world.%rpg.user.loc%.dirW!"
-if defined rpg.world.%rpg.user.loc%.dirW set "rpg.hud.mov=%rpg.hud.mov%[A] !rpg.world.%rpg.hud.tmp%.name! "
-if defined rpg.world.%rpg.user.loc%.dirS set "rpg.hud.tmp=!rpg.world.%rpg.user.loc%.dirS!"
-if defined rpg.world.%rpg.user.loc%.dirS set "rpg.hud.mov=%rpg.hud.mov%[S] !rpg.world.%rpg.hud.tmp%.name! "
-if defined rpg.world.%rpg.user.loc%.dirE set "rpg.hud.tmp=!rpg.world.%rpg.user.loc%.dirE!"
-if defined rpg.world.%rpg.user.loc%.dirE set "rpg.hud.mov=%rpg.hud.mov%[D] !rpg.world.%rpg.hud.tmp%.name! "
-
-::print new location
-if not defined rpg.hud.input set "rpg.hud.input=W"
-for %%d in (W,S,A,D) do if [%rpg.hud.input%]==[%%d] (
-	call :addline Location: !rpg.world.%rpg.user.loc%.name!
-	if defined rpg.world.%rpg.user.loc%.desc call :addline "!rpg.world.%rpg.user.loc%.desc!"
-	call :addline Directions: %rpg.hud.mov%
-	call :addline
-	)
 
 ::fill hud rows
 for /l %%l in (1,1,%rpg.hud.lines%) do set "rpg.hud.l%%l=!rpg.hud.l%%l!%rpg.hud.spacer%"
