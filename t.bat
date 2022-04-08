@@ -3,8 +3,9 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set "appname=Test RPG"
 set "appdate=April 8, 2022"
-set "appver=0.8.14-alpha"
+set "appver=0.8.15-alpha"
 ::
+::0.8.15 fixed shop code for tavern
 ::0.8.14 code commenting/cleaning
 ::0.8.13 location code optimization
 ::0.8.12 interface auto open/close when entering shops
@@ -127,10 +128,10 @@ for %%d in (W,S,A,D) do if [%rpg.hud.input%]==[%%d] (
 	if defined rpg.world.%rpg.user.loc%.desc call :addline "!rpg.world.%rpg.user.loc%.desc!"
 	call :addline Directions: %rpg.hud.mov%
 	call :addline
+	::open/close invterface when entering shops/moving
+	if defined rpg.world.%rpg.user.loc%.job (set "rpg.hud.inventory=open") else (set "rpg.hud.inventory=closed")
 	)
 
-::open/close invterface when entering shops/moving
-if defined rpg.world.%rpg.user.loc%.job (set "rpg.hud.inventory=open") else (set "rpg.hud.inventory=closed")
 
 ::controls description
 set "rpg.hud.cont= [U] Equipment [I] Inventory"
@@ -185,6 +186,7 @@ if %rpg.hud.invtype%==owned (
 ) else (
 	if !rpg.world.%rpg.user.loc%.job!==weaponsm set "rpg.hud.invslots=weapon"
 	if !rpg.world.%rpg.user.loc%.job!==armorsm set "rpg.hud.invslots=head torso arms belt legs feet shield"
+	if !rpg.world.%rpg.user.loc%.job!==tavern set "rpg.hud.invslots="
 	for /f "tokens=1-5 delims=.^=" %%i in ('set rpg.item.') do (
 		::item=%%k property=%%l value=%%m
 		for %%s in (!rpg.hud.invslots!) do (
