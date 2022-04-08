@@ -3,8 +3,9 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set "appname=Test RPG"
 set "appdate=April 8, 2022"
-set "appver=0.8.13-alpha"
+set "appver=0.8.14-alpha"
 ::
+::0.8.14 code commenting/cleaning
 ::0.8.13 location code optimization
 ::0.8.12 interface auto open/close when entering shops
 ::0.8.11 added minimap indicators
@@ -20,7 +21,6 @@ set "appver=0.8.13-alpha"
 ::0.8.1 added tavern job
 ::0.8.0 added shop code
 ::
-
 :init
 title %appname% v%appver% - %appdate%
 set rpg.init=true
@@ -75,8 +75,6 @@ if %rpg.user.class%==Warrior (set /a "rpg.user.con=10+rpg.user.level/5") else (s
 
 ::set other stats
 set /a "rpg.user.dex=10"
-::set /a "rpg.user.int=10"
-::set /a "rpg.user.qui=10"
 
 ::calc HPMAX=CON*20+L*50
 set /a "rpg.user.hpmax=rpg.user.con*20+rpg.user.level*50"
@@ -122,15 +120,17 @@ for %%d in (N,S) do for %%s in (W,E) do (
 set rpg.hud.mov=
 for %%d in (N,S,W,E) do if defined rpg.world.%rpg.user.loc%.dir%%d set "rpg.hud.tmp=!rpg.world.%rpg.user.loc%.dir%%d!" & set "rpg.hud.mov=!rpg.hud.mov![%%d] %%rpg.world.!rpg.hud.tmp!.name%% "
 
-::print new location
+::print new location when moving
 if not defined rpg.hud.input set "rpg.hud.input=W"
 for %%d in (W,S,A,D) do if [%rpg.hud.input%]==[%%d] (
 	call :addline Location: !rpg.world.%rpg.user.loc%.name!
 	if defined rpg.world.%rpg.user.loc%.desc call :addline "!rpg.world.%rpg.user.loc%.desc!"
-	if defined rpg.world.%rpg.user.loc%.job (set "rpg.hud.inventory=open") else (set "rpg.hud.inventory=closed")
 	call :addline Directions: %rpg.hud.mov%
 	call :addline
 	)
+
+::open/close invterface when entering shops/moving
+if defined rpg.world.%rpg.user.loc%.job (set "rpg.hud.inventory=open") else (set "rpg.hud.inventory=closed")
 
 ::controls description
 set "rpg.hud.cont= [U] Equipment [I] Inventory"
@@ -144,13 +144,13 @@ set "rpg.hud.invkeys="
 ::fill hud
 set "rpg.hud.l2=   Map     Attributes"
 set "rpg.hud.l3=%rpg.map.dirNW%%rpg.map.dirN%%rpg.map.dirNE%   Str: %rpg.user.str% Con: %rpg.user.con% Dex: %rpg.user.dex%"
-set "rpg.hud.l4=%rpg.map.dirW%[x]%rpg.map.dirE%   Arm: %rpg.user.arm% Dps: %rpg.user.dps%" & ::Qui: %rpg.user.qui% Int: %rpg.user.int%"
+set "rpg.hud.l4=%rpg.map.dirW%[x]%rpg.map.dirE%   Arm: %rpg.user.arm% Dps: %rpg.user.dps%"
 set "rpg.hud.l5=%rpg.map.dirSW%%rpg.map.dirS%%rpg.map.dirSE%   Gold: %rpg.user.gold%"
 set "rpg.hud.l7=Location: !rpg.world.%rpg.user.loc%.name!"
 if defined rpg.world.%rpg.user.loc%.enc ( set "rpg.hud.enc=There are enemies nearby.") else ( set "rpg.hud.enc=This is a safe place.")
 set "rpg.hud.l8=%rpg.hud.enc%"
 
-::this is skipped if inventory or equipment are open
+::show player/enemy hud (this is skipped if inventory or equipment are open)
 if "%rpg.hud.inventory%"=="open" goto :hudinventoryopen
 if "%rpg.hud.equipment%"=="open" goto :hudequipmentopen
 set "rpg.hud.l10=%rpg.user.name%, %rpg.user.class% [%rpg.user.level%]"
@@ -160,7 +160,7 @@ set "rpg.hud.l13= XP %rpg.hud.xpbar% %rpg.user.xp%/%rpg.user.xpmax%"
 if %rpg.user.status%==fight set "rpg.hud.l15=%rpg.enemy.name% [%rpg.enemy.level%]"
 if %rpg.user.status%==fight set "rpg.hud.l16= HP %rpg.hud.foebar% %rpg.enemy.hp%/%rpg.enemy.hpmax%"
 
-::this is skipped if inventory is NOT open
+::show interface (this is skipped if inventory is NOT open)
 if not "%rpg.hud.inventory%"=="open" goto :hudinventoryclosed
 :hudinventoryopen
 
@@ -223,7 +223,7 @@ for /l %%l in (%rpg.hud.invmin%,1,%rpg.hud.invmax%) do (
 ::add inventory controls
 set "rpg.hud.cont2=%rpg.hud.cont2% [0-9] %rpg.hud.invaction%"
 
-::add pages indicator
+::add page indicators
 if %rpg.hud.invpages% GTR 1 (
 	set "rpg.hud.invbar="
 	for /l %%p in (1,1,%rpg.hud.invpages%) do if %rpg.hud.invpage% EQU %%p (set "rpg.hud.invbar=!rpg.hud.invbar!#") else (set "rpg.hud.invbar=!rpg.hud.invbar!-")
@@ -233,7 +233,7 @@ if %rpg.hud.invpages% GTR 1 (
 	set "rpg.hud.cont2=%rpg.hud.cont2% [P] Page"
 	)
 
-::this is skipped if equipment is NOT open
+::show equipment (this is skipped if equipment is NOT open)
 if not "%rpg.hud.equipment%"=="open" goto :hudequipmentclosed
 :hudequipmentopen
 set "rpg.hud.l10=Equipment:"
@@ -266,12 +266,12 @@ for /l %%l in (1,1,%rpg.hud.lines%) do if not defined rpg.hud.r%%l set "rpg.hud.
 cls
 for /l %%l in (1,1,%rpg.hud.lines%) do echo  !rpg.hud.l%%l:~0,%rpg.hud.left%! # !rpg.hud.r%%l:~0,%rpg.hud.right%!
 
-::define avaiable controls
+::define avaiable moving controls
 set "rpg.hud.choice=%rpg.hud.keys%%rpg.hud.invkeys%"
-if not defined rpg.world.%rpg.user.loc%.dirn set rpg.hud.choice=%rpg.hud.choice:W=%
-if not defined rpg.world.%rpg.user.loc%.dirs set rpg.hud.choice=%rpg.hud.choice:S=%
-if not defined rpg.world.%rpg.user.loc%.dirw set rpg.hud.choice=%rpg.hud.choice:A=%
-if not defined rpg.world.%rpg.user.loc%.dire set rpg.hud.choice=%rpg.hud.choice:D=%
+if not defined rpg.world.%rpg.user.loc%.dirN set rpg.hud.choice=%rpg.hud.choice:W=%
+if not defined rpg.world.%rpg.user.loc%.dirS set rpg.hud.choice=%rpg.hud.choice:S=%
+if not defined rpg.world.%rpg.user.loc%.dirW set rpg.hud.choice=%rpg.hud.choice:A=%
+if not defined rpg.world.%rpg.user.loc%.dirE set rpg.hud.choice=%rpg.hud.choice:D=%
 
 ::post execution time
 if defined rpg.time set /a "rpg.time+=1%time:~-10,1%%time:~-8,2%%time:~-5,2%%time:~-2,2%"
@@ -281,12 +281,6 @@ set "rpg.hud.message=Ping (%rpg.time%0ms)%rpg.hud.spacer%"
 choice /n /c %rpg.hud.choice% /d E /t %rpg.delay% /m "!rpg.hud.message:~0,%rpg.hud.left%!  #"
 
 ::player input
-:: need to implement actions like mining, fishing, crafting, ecc.
-:: also a tavern (yellow fore) with shop and adiacent room for sleep (full rest)
-:: ticking colors
-:: onhit red/white
-:: heal green
-:: shop yellow
 set /a "rpg.hud.input=%errorlevel%-1"
 set "rpg.hud.input=!rpg.hud.choice:~%rpg.hud.input%,1!"
 set "rpg.hud.action=loop"
@@ -324,8 +318,8 @@ goto :eof
 
 :: #################################### ACTIONS ##########################################::
 
-:create
 ::Character creation.... here!
+:create
 cls
 set /p "rpg.user.name=Enter you name:"
 set "rpg.user.class=Warrior"
@@ -334,17 +328,17 @@ set "rpg.user.loc=spawn"
 set "rpg.user.status=idle"
 goto:loop
 
+::Saving user and whatelse?
 :quit
 cls
-::Saving user and whatelse?
 set rpg.user > user.sav
 set rpg.inv. >> user.sav
 echo %date% %time% > debug.log
 set rpg. >> debug.log
 goto :eof
 
+::pick random enemy (this is skipped if user is already in fight)
 :engage
-::this is skipped if user is already in fight
 if defined rpg.enemy.id goto :fight
 ::chance to fight is 1 over 8*ndir
 set /a "rpg.enemy.chance=0"
@@ -377,22 +371,25 @@ set /a "rpg.enemy.hp=rpg.enemy.hpmax"
 call :addline You encounter a %rpg.enemy.name%.
 goto :loop
 
+:: rest (need to implement hp and pw regen bonuses)
 :wait
-:: need to implement hp and pw regen bonuses
 if %rpg.user.hp% LSS %rpg.user.hpmax% set /a "rpg.user.hp+=rpg.user.hpmax*3/100"
 if %rpg.user.pw% LSS %rpg.user.pwmax% set /a "rpg.user.pw+=rpg.user.pwmax*3/100"
 goto :loop
 
+::opening equipment
 :equipment
 if "%rpg.hud.equipment%"=="open" (set "rpg.hud.equipment=closed") else (set "rpg.hud.equipment=open" & set "rpg.hud.inventory=closed")
 goto :loop
 
+::opening inventory
 :inventory
 if "%rpg.hud.inventory%"=="open" (set "rpg.hud.inventory=closed") else (set "rpg.hud.inventory=open" & set "rpg.hud.equipment=closed")
 goto :loop
 
+::using/equipping an item
 :use
-if %rpg.hud.equipment%==open goto :unequip
+if "%rpg.hud.equipment%"=="open" goto :unequip
 if %rpg.hud.invaction%==Sell goto :sell
 if %rpg.hud.invaction%==Buy goto :buy
 set /a rpg.hud.input+=10*(rpg.hud.invpage-1)
@@ -408,6 +405,7 @@ goto :loop
 
 :: #################################### REACTIONS ####################################### ::
 
+::combat turn
 :fight
 if not defined rpg.user.action set "rpg.user.action=defend"
 if %rpg.user.hp% EQU 0 goto :death
@@ -420,8 +418,8 @@ if %rpg.user.hp% LEQ 0 set /a "rpg.user.hp=0"
 if %rpg.enemy.hp% LEQ 0 set /a "rpg.enemy.hp=0"
 goto :loop
 
+::you died (need to fix death display then reset)
 :death
-::need to fix death display then reset
 ping -n %rpg.delay% localhost > nul
 echo You died.
 ping -n %rpg.delay% localhost > nul
@@ -430,6 +428,7 @@ pause > nul
 call :clear
 goto :init
 
+::enemy died
 :victory
 call :addline %rpg.enemy.name% died.
 call :reward
@@ -439,6 +438,7 @@ call :addline
 call :clear
 goto :loop
 
+::unequipping items
 :unequip
 set rpg.hud.unequip=!rpg.hud.unequip[%rpg.hud.input%]!
 set rpg.hud.unequipitem=!rpg.user.%rpg.hud.unequip%!
@@ -447,6 +447,7 @@ if defined rpg.user.%rpg.hud.unequip% set /a "rpg.inv.%rpg.hud.unequipitem%+=1"
 set "rpg.user.%rpg.hud.unequip%="
 goto :loop
 
+::selling items
 :sell
 set /a rpg.hud.input+=10*(rpg.hud.invpage-1)
 set rpg.hud.sell=!rpg.hud.inv[%rpg.hud.input%]!
@@ -456,24 +457,28 @@ set /a "rpg.inv.%rpg.hud.sell%-=1"
 call :addline You sold !rpg.item.%rpg.hud.sell%.name! for %rpg.hud.sellprice% gold.
 goto :loop
 
+::buying items
 :buy
 set /a rpg.hud.input+=10*(rpg.hud.invpage-1)
 set rpg.hud.buy=!rpg.hud.inv[%rpg.hud.input%]!
 set /a "rpg.hud.buyprice=rpg.item.%rpg.hud.buy%.val*125/100"
-if %rpg.user.gold% GEQ %rpg.hud.buyprice% (set /a "rpg.user.gold-=rpg.hud.buyprice, rpg.inv.%rpg.hud.buy%+=1") else goto :cantbuy
-call :addline You bought !rpg.item.%rpg.hud.buy%.name! for %rpg.hud.buyprice% gold.
-goto :loop
-:cantbuy
-call :addline You need %rpg.hud.buyprice%g to buy !rpg.item.%rpg.hud.buy%.name!.
+if %rpg.user.gold% LSS %rpg.hud.buyprice% (
+	call :addline You need %rpg.hud.buyprice%g to buy !rpg.item.%rpg.hud.buy%.name!.
+) else (
+	set /a "rpg.user.gold-=rpg.hud.buyprice, rpg.inv.%rpg.hud.buy%+=1"
+	call :addline You bought !rpg.item.%rpg.hud.buy%.name! for %rpg.hud.buyprice% gold.
+)
 goto :loop
 
 :: #################################### SUBS ############################################ ::
 
+::create bar
 :barcalc <bar name> <value> <max value>
 set /a "progress=rpg.hud.barsize-(rpg.hud.barsize*%2/%3)"
 set "rpg.hud.%1=[!rpg.hud.bar:~%progress%,%rpg.hud.barsize%!]"
 exit /b
 
+::damage calculator
 :dmgcalc <attlev> <attstr> <wepdps> <defarm> <deflev>
 set /a "rpg.dmg.rnd=(%random% %%50)+100"
 set /a "rpg.dmg.attlev=%1"
@@ -486,6 +491,7 @@ set /a "rpg.dmg.attdmg=rpg.dmg.attlev*(rpg.dmg.attdps+rpg.dmg.wepdps)*rpg.dmg.at
 set /a "rpg.dmg.val=rpg.dmg.attdmg*rpg.dmg.rnd/100*(100-rpg.dmg.defarm)/rpg.dmg.deflev/100"
 exit /b
 
+::player reward (xp+gold+item)
 :reward
 ::get xp
 set /a "rpg.drop.xp=25*(rpg.enemy.level+1)*rpg.enemy.level/(rpg.enemy.level+10)*rpg.enemy.level/rpg.user.level"
@@ -500,12 +506,13 @@ for /f "tokens=3,4 delims=.^=" %%a in ('set rpg.item.') do if "%%b"=="val" set "
 ::picking rnd from count and saving id
 set /a "rpg.drop.rnd=(%random% %%rpg.drop.count)"
 set "rpg.drop.id=!rpg.drop[%rpg.drop.rnd%].id!"
-::adding
+::adding rewards
 if !rpg.item.%rpg.drop.id%.val! LEQ %rpg.drop.max% (set /a "rpg.inv.%rpg.drop.id%+=1") else (set "rpg.drop.id=")
 set /a "rpg.user.xp+=rpg.drop.xp"
 set /a "rpg.user.gold+=rpg.drop.gold"
 exit /b
 
+::add a new text line in memory
 :addline <new line text>
 if not defined rpg.hud.text set "rpg.hud.text=%*"
 set /a "rpg.hud.last=1"
@@ -518,6 +525,7 @@ set "rpg.hud.text=!rpg.hud.text:~%rpg.hud.right%!"
 if defined rpg.hud.text if "!rpg.hud.text:~1,2!"=="%rpg.hud.right%" (set rpg.hud.text=) else (goto :addline)
 exit /b
 
+::clear variables used for calculation
 :clear
 if defined rpg.drop.id for /f "delims=^=" %%a in ('set rpg.drop') do set %%a=
 if defined rpg.dmg.val for /f "delims=^=" %%c in ('set rpg.dmg') do set %%c=
