@@ -3,32 +3,18 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set "appname=Test RPG"
 set "appdate=April 8, 2022"
-set "appver=0.8.15-alpha"
+set "appver=0.8.16-alpha"
 ::
+::0.8.16 fixed code for larger screen mode
 ::0.8.15 fixed shop code for tavern
-::0.8.14 code commenting/cleaning
-::0.8.13 location code optimization
-::0.8.12 interface auto open/close when entering shops
-::0.8.11 added minimap indicators
-::0.8.10 minimap code optimization
-::0.8.9 raised mob count for leveling
-::0.8.8 fixed code for xp reward and xp cap
-::0.8.7 fixed level detection code
-::0.8.6 more code optimization
-::0.8.5 changed dmgcalc formula
-::0.8.4 added switching item if slot is already used
-::0.8.3 code optimization
-::0.8.2 fixed selling price ratio
-::0.8.1 added tavern job
-::0.8.0 added shop code
 ::
 :init
 title %appname% v%appver% - %appdate%
 set rpg.init=true
 for /f "delims=^=" %%i in ('set rpg.') do set %%i=
 set "rpg.hud.color=color 07"
-set /a "rpg.hud.cols=120"
-set /a "rpg.hud.rows=30"
+set /a "rpg.hud.cols=142"
+set /a "rpg.hud.rows=36"
 mode con cols=%rpg.hud.cols% lines=%rpg.hud.rows%
 set /a "rpg.hud.lines=rpg.hud.rows-2"
 set /a "rpg.hud.left=39"
@@ -132,7 +118,6 @@ for %%d in (W,S,A,D) do if [%rpg.hud.input%]==[%%d] (
 	if defined rpg.world.%rpg.user.loc%.job (set "rpg.hud.inventory=open") else (set "rpg.hud.inventory=closed")
 	)
 
-
 ::controls description
 set "rpg.hud.cont= [U] Equipment [I] Inventory"
 set "rpg.hud.cont2= [Q] Quit"
@@ -154,22 +139,22 @@ set "rpg.hud.l8=%rpg.hud.enc%"
 ::show player/enemy hud (this is skipped if inventory or equipment are open)
 if "%rpg.hud.inventory%"=="open" goto :hudinventoryopen
 if "%rpg.hud.equipment%"=="open" goto :hudequipmentopen
-set "rpg.hud.l10=%rpg.user.name%, %rpg.user.class% [%rpg.user.level%]"
-set "rpg.hud.l11= HP %rpg.hud.hpbar% %rpg.user.hp%/%rpg.user.hpmax%"
-set "rpg.hud.l12= PW %rpg.hud.pwbar% %rpg.user.pw%/%rpg.user.pwmax%"
-set "rpg.hud.l13= XP %rpg.hud.xpbar% %rpg.user.xp%/%rpg.user.xpmax%"
-if %rpg.user.status%==fight set "rpg.hud.l15=%rpg.enemy.name% [%rpg.enemy.level%]"
-if %rpg.user.status%==fight set "rpg.hud.l16= HP %rpg.hud.foebar% %rpg.enemy.hp%/%rpg.enemy.hpmax%"
+set "rpg.hud.l16=%rpg.user.name%, %rpg.user.class% [%rpg.user.level%]"
+set "rpg.hud.l17= HP %rpg.hud.hpbar% %rpg.user.hp%/%rpg.user.hpmax%"
+set "rpg.hud.l18= PW %rpg.hud.pwbar% %rpg.user.pw%/%rpg.user.pwmax%"
+set "rpg.hud.l19= XP %rpg.hud.xpbar% %rpg.user.xp%/%rpg.user.xpmax%"
+if %rpg.user.status%==fight set "rpg.hud.l21=%rpg.enemy.name% [%rpg.enemy.level%]"
+if %rpg.user.status%==fight set "rpg.hud.l22= HP %rpg.hud.foebar% %rpg.enemy.hp%/%rpg.enemy.hpmax%"
 
 ::show interface (this is skipped if inventory is NOT open)
 if not "%rpg.hud.inventory%"=="open" goto :hudinventoryclosed
 :hudinventoryopen
 
 ::detect job and set action
-set "rpg.hud.l10=Inventory:" & set "rpg.hud.invaction=Use"
+set "rpg.hud.l16=Inventory:" & set "rpg.hud.invaction=Use"
 if defined rpg.world.%rpg.user.loc%.job (
-	set "rpg.hud.l10=Choose an item to buy:" & set "rpg.hud.invaction=Buy"
-	if !rpg.world.%rpg.user.loc%.job!==merchant set "rpg.hud.l10=Choose an item to sell:" & set "rpg.hud.invaction=Sell"
+	set "rpg.hud.l16=Choose an item to buy:" & set "rpg.hud.invaction=Buy"
+	if !rpg.world.%rpg.user.loc%.job!==merchant set "rpg.hud.l16=Choose an item to sell:" & set "rpg.hud.invaction=Sell"
 )
 
 ::list items
@@ -205,9 +190,11 @@ if !rpg.hud.invpage! GTR %rpg.hud.invpages% set /a "rpg.hud.invpage=1"
 set /a "rpg.hud.invmin=1+10*(rpg.hud.invpage-1)"
 set /a "rpg.hud.invmax=rpg.hud.invmin+9"
 for /l %%l in (%rpg.hud.invmin%,1,%rpg.hud.invmax%) do (
+	set /a "rpg.hud.invfirstline=17"
+	set /a "rpg.hud.invlastline=rpg.hud.invfirstline+9"
 	set /a "rpg.hud.invslot=%%l"
-	set /a "rpg.hud.invline=10+%%l"
-	if !rpg.hud.invline! GTR 20 set /a "rpg.hud.invline-=10*(((!rpg.hud.invline!-1)/10)-1)"
+	set /a "rpg.hud.invline=%%l+rpg.hud.invfirstline-1"
+	if !rpg.hud.invline! GTR !rpg.hud.invlastline! set /a "rpg.hud.invline-=10*(rpg.hud.invpage-1)"
 	if %rpg.hud.invaction%==Sell set /a "rpg.hud.bonus=rpg.item.!rpg.hud.inv[%%l]!.val*75/100" & set rpg.hud.bonus=!rpg.hud.bonus!g
 	if %rpg.hud.invaction%==Buy set /a "rpg.hud.bonus=rpg.item.!rpg.hud.inv[%%l]!.val*125/100" & set rpg.hud.bonus=!rpg.hud.bonus!g
 	if %rpg.hud.invaction%==Use for %%b in (arm dps str con dex hp pw) do if defined rpg.item.!rpg.hud.inv[%%l]!.%%b call set "rpg.hud.bonus=+%%rpg.item.!rpg.hud.inv[%%l]!.%%b%% %%b"
@@ -229,8 +216,8 @@ set "rpg.hud.cont2=%rpg.hud.cont2% [0-9] %rpg.hud.invaction%"
 if %rpg.hud.invpages% GTR 1 (
 	set "rpg.hud.invbar="
 	for /l %%p in (1,1,%rpg.hud.invpages%) do if %rpg.hud.invpage% EQU %%p (set "rpg.hud.invbar=!rpg.hud.invbar!#") else (set "rpg.hud.invbar=!rpg.hud.invbar!-")
-	set "rpg.hud.l22= Page %rpg.hud.invpage% of %rpg.hud.invpages%"
-	set "rpg.hud.l23= [!rpg.hud.invbar!]"
+	set "rpg.hud.l28= Page %rpg.hud.invpage% of %rpg.hud.invpages%"
+	set "rpg.hud.l29= [!rpg.hud.invbar!]"
 	set "rpg.hud.invkeys=%rpg.hud.invkeys%P"
 	set "rpg.hud.cont2=%rpg.hud.cont2% [P] Page"
 	)
@@ -238,25 +225,25 @@ if %rpg.hud.invpages% GTR 1 (
 ::show equipment (this is skipped if equipment is NOT open)
 if not "%rpg.hud.equipment%"=="open" goto :hudequipmentclosed
 :hudequipmentopen
-set "rpg.hud.l10=Equipment:"
-if defined rpg.user.head set "rpg.hud.l11= Head [1] !rpg.item.%rpg.user.head%.name! (+!rpg.item.%rpg.user.head%.arm!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%1" & set "rpg.hud.unequip[1]=head"
-if defined rpg.user.torso set "rpg.hud.l12= Torso [2] !rpg.item.%rpg.user.torso%.name! (+!rpg.item.%rpg.user.torso%.arm!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%2" & set "rpg.hud.unequip[2]=torso"
-if defined rpg.user.arms set "rpg.hud.l13= Arms [3] !rpg.item.%rpg.user.arms%.name! (+!rpg.item.%rpg.user.arms%.arm!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%3" & set "rpg.hud.unequip[3]=arms"
-if defined rpg.user.legs set "rpg.hud.l14= Legs [4] !rpg.item.%rpg.user.legs%.name! (+!rpg.item.%rpg.user.legs%.arm!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%4" & set "rpg.hud.unequip[4]=legs"
-if defined rpg.user.feet set "rpg.hud.l15= Feet [5] !rpg.item.%rpg.user.feet%.name! (+!rpg.item.%rpg.user.feet%.arm!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%5" & set "rpg.hud.unequip[5]=feet"
-if defined rpg.user.neck set "rpg.hud.l17= Legs [6] !rpg.item.%rpg.user.neck%.name! (+!rpg.item.%rpg.user.neck%.val!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%6" & set "rpg.hud.unequip[6]=neck"
-if defined rpg.user.jewel set "rpg.hud.l18= Jewel [7] !rpg.item.%rpg.user.jewel%.name! (+!rpg.item.%rpg.user.jewel%.val!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%7" & set "rpg.hud.unequip[7]=jewel"
-if defined rpg.user.belt set "rpg.hud.l19= Belt [8] !rpg.item.%rpg.user.belt%.name! (+!rpg.item.%rpg.user.belt%.val!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%8" & set "rpg.hud.unequip[8]=belt"
-if defined rpg.user.weapon set "rpg.hud.l21= Weapon [9] !rpg.item.%rpg.user.weapon%.name! (+!rpg.item.%rpg.user.weapon%.dps!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%9" & set "rpg.hud.unequip[9]=weapon"
-if defined rpg.user.shield set "rpg.hud.l22= Shield [0] !rpg.item.%rpg.user.shield%.name! (+!rpg.item.%rpg.user.shield%.arm!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%0" & set "rpg.hud.unequip[0]=shield"
+set "rpg.hud.l16=Equipment:"
+if defined rpg.user.head set "rpg.hud.l17= Head [1] !rpg.item.%rpg.user.head%.name! (+!rpg.item.%rpg.user.head%.arm!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%1" & set "rpg.hud.unequip[1]=head"
+if defined rpg.user.torso set "rpg.hud.l18= Torso [2] !rpg.item.%rpg.user.torso%.name! (+!rpg.item.%rpg.user.torso%.arm!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%2" & set "rpg.hud.unequip[2]=torso"
+if defined rpg.user.arms set "rpg.hud.l19= Arms [3] !rpg.item.%rpg.user.arms%.name! (+!rpg.item.%rpg.user.arms%.arm!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%3" & set "rpg.hud.unequip[3]=arms"
+if defined rpg.user.legs set "rpg.hud.l20= Legs [4] !rpg.item.%rpg.user.legs%.name! (+!rpg.item.%rpg.user.legs%.arm!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%4" & set "rpg.hud.unequip[4]=legs"
+if defined rpg.user.feet set "rpg.hud.l21= Feet [5] !rpg.item.%rpg.user.feet%.name! (+!rpg.item.%rpg.user.feet%.arm!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%5" & set "rpg.hud.unequip[5]=feet"
+if defined rpg.user.neck set "rpg.hud.l23= Legs [6] !rpg.item.%rpg.user.neck%.name! (+!rpg.item.%rpg.user.neck%.val!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%6" & set "rpg.hud.unequip[6]=neck"
+if defined rpg.user.jewel set "rpg.hud.l24= Jewel [7] !rpg.item.%rpg.user.jewel%.name! (+!rpg.item.%rpg.user.jewel%.val!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%7" & set "rpg.hud.unequip[7]=jewel"
+if defined rpg.user.belt set "rpg.hud.l25= Belt [8] !rpg.item.%rpg.user.belt%.name! (+!rpg.item.%rpg.user.belt%.val!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%8" & set "rpg.hud.unequip[8]=belt"
+if defined rpg.user.weapon set "rpg.hud.l27= Weapon [9] !rpg.item.%rpg.user.weapon%.name! (+!rpg.item.%rpg.user.weapon%.dps!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%9" & set "rpg.hud.unequip[9]=weapon"
+if defined rpg.user.shield set "rpg.hud.l28= Shield [0] !rpg.item.%rpg.user.shield%.name! (+!rpg.item.%rpg.user.shield%.arm!)" & set "rpg.hud.invkeys=%rpg.hud.invkeys%0" & set "rpg.hud.unequip[0]=shield"
 set "rpg.hud.cont2=%rpg.hud.cont2% [0-9] Unequip"
 
 ::finish hud
 :hudinventoryclosed
 :hudequipmentclosed
-set "rpg.hud.l25=Controls:"
-set "rpg.hud.l26=%rpg.hud.cont:~0,40%"
-set "rpg.hud.l27=%rpg.hud.cont2:~0,40%"
+set "rpg.hud.l31=Controls:"
+set "rpg.hud.l32=%rpg.hud.cont:~0,40%"
+set "rpg.hud.l33=%rpg.hud.cont2:~0,40%"
 
 ::fill hud rows
 for /l %%l in (1,1,%rpg.hud.lines%) do set "rpg.hud.l%%l=!rpg.hud.l%%l!%rpg.hud.spacer%"
