@@ -3,8 +3,10 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set "appname=Test RPG"
 set "appdate=April 8, 2022"
-set "appver=0.8.16-alpha"
+set "appver=0.9.0-alpha"
 ::
+::0.9.1  moved player hud based on new map
+::0.9.0  new map engine / world definition
 ::0.8.16 fixed code for larger screen mode
 ::0.8.15 fixed shop code for tavern
 ::
@@ -20,10 +22,6 @@ set /a "rpg.hud.lines=rpg.hud.rows-2"
 set /a "rpg.hud.left=39"
 set /a "rpg.hud.right=rpg.hud.cols-rpg.hud.left-5"
 set /a "rpg.hud.barsize=(rpg.hud.left+1)/2"
-set "rpg.map.full=[ ]"
-set "rpg.map.enc=[#]"
-set "rpg.map.job=[$]"
-set "rpg.map.empty=.:."
 set /a "rpg.inv.nullitem=0"
 set /a "rpg.delay=3"
 set "rpg.hud.adminkeys=GHKXV"
@@ -83,39 +81,47 @@ call :barcalc pwbar %rpg.user.pw% %rpg.user.pwmax%
 call :barcalc xpbar %rpg.user.xpcur% %rpg.user.xplev%
 if %rpg.user.status%==fight call :barcalc foebar %rpg.enemy.hp% %rpg.enemy.hpmax%
 
-::clear minimap
-for %%d in (N,S,W,E,NW,NE,SW,SE) do set "rpg.map.dir%%d=%rpg.map.empty%" 
+::define position
+set "rpg.user.pos=x%rpg.user.x%y%rpg.user.y%"
+set "rpg.map.height=11"
 
-::set minimap
-for %%d in (N,S,W,E) do if defined rpg.world.%rpg.user.loc%.dir%%d (
-	set "rpg.map.dir%%d=%rpg.map.full%"
-	if defined rpg.world.!rpg.world.%rpg.user.loc%.dir%%d!.enc set "rpg.map.dir%%d=%rpg.map.enc%"
-	if defined rpg.world.!rpg.world.%rpg.user.loc%.dir%%d!.job set "rpg.map.dir%%d=%rpg.map.job%"
+::clear hud lines
+for /l %%l in (1,1,%rpg.hud.lines%) do set "rpg.hud.l%%l="
+set "rpg.hud.invkeys="
+
+::read map
+set /a "rpg.hud.l=1"
+set /a "rpg.map.ymin=rpg.user.y-(rpg.map.height-1)/2, rpg.map.ymax=rpg.user.y+(rpg.map.height-1)/2"
+set /a "rpg.map.xmin=rpg.user.x-6, rpg.map.xmax=rpg.user.x+6"
+for /l %%y in (!rpg.map.ymax!,-1,!rpg.map.ymin!) do (
+	for /l %%x in (!rpg.map.xmin!,1,!rpg.map.xmax!) do (
+		set "rpg.map.tile=.:."
+		if defined rpg.world.x%%xy%%y.name set "rpg.map.tile=[ ]"
+		if defined rpg.world.x%%xy%%y.job set "rpg.map.tile=[$]"
+		if %rpg.user.pos%==x%%xy%%y set "rpg.map.tile=[x]"
+		call set "rpg.hud.l!rpg.hud.l!=%%rpg.hud.l!rpg.hud.l!%%!rpg.map.tile!"
+	)
+	set /a "rpg.hud.l+=1"
 )
-for %%d in (N,S) do for %%s in (W,E) do (
-	call set rpg.map.loc=%%rpg.world.!rpg.world.%rpg.user.loc%.dir%%d!.dir%%s%%
-	if defined rpg.map.loc set "rpg.map.dir%%d%%s=%rpg.map.full%"
-	if defined rpg.world.!rpg.map.loc!.enc set "rpg.map.dir%%d%%s=%rpg.map.enc%"
-	if defined rpg.world.!rpg.map.loc!.job set "rpg.map.dir%%d%%s=%rpg.map.job%"
-	call set rpg.map.loc=%%rpg.world.!rpg.world.%rpg.user.loc%.dir%%s!.dir%%d%%
-	if defined rpg.map.loc set "rpg.map.dir%%d%%s=%rpg.map.full%"
-	if defined rpg.world.!rpg.map.loc!.enc set "rpg.map.dir%%d%%s=%rpg.map.enc%"
-	if defined rpg.world.!rpg.map.loc!.job set "rpg.map.dir%%d%%s=%rpg.map.job%"
-) 
 
 ::directions set
 set rpg.hud.mov=
-for %%d in (N,S,W,E) do if defined rpg.world.%rpg.user.loc%.dir%%d set "rpg.hud.tmp=!rpg.world.%rpg.user.loc%.dir%%d!" & set "rpg.hud.mov=!rpg.hud.mov![%%d] %%rpg.world.!rpg.hud.tmp!.name%% "
+set /a "rpg.map.n=rpg.user.y+1, rpg.map.s=rpg.user.y-1, rpg.map.w=rpg.user.x-1, rpg.map.e=rpg.user.x+1"
+if defined rpg.world.x%rpg.user.x%y%rpg.map.n%.name set "rpg.hud.mov=!rpg.hud.mov![N] !rpg.world.x%rpg.user.x%y%rpg.map.n%.name! "
+if defined rpg.world.x%rpg.user.x%y%rpg.map.s%.name set "rpg.hud.mov=!rpg.hud.mov![S] !rpg.world.x%rpg.user.x%y%rpg.map.s%.name! "
+if defined rpg.world.x%rpg.map.w%y%rpg.user.y%.name set "rpg.hud.mov=!rpg.hud.mov![W] !rpg.world.x%rpg.map.w%y%rpg.user.y%.name! "
+if defined rpg.world.x%rpg.map.e%y%rpg.user.y%.name set "rpg.hud.mov=!rpg.hud.mov![E] !rpg.world.x%rpg.map.e%y%rpg.user.y%.name! "
+)
 
 ::print new location when moving
 if not defined rpg.hud.input set "rpg.hud.input=W"
 for %%d in (W,S,A,D) do if [%rpg.hud.input%]==[%%d] (
-	call :addline Location: !rpg.world.%rpg.user.loc%.name!
-	if defined rpg.world.%rpg.user.loc%.desc call :addline "!rpg.world.%rpg.user.loc%.desc!"
+	call :addline Location: !rpg.world.%rpg.user.pos%.name!
+	if defined rpg.world.%rpg.user.pos%.desc call :addline "!rpg.world.%rpg.user.pos%.desc!"
 	call :addline Directions: %rpg.hud.mov%
 	call :addline
 	::open/close invterface when entering shops/moving
-	if defined rpg.world.%rpg.user.loc%.job (set "rpg.hud.inventory=open") else (set "rpg.hud.inventory=closed")
+	if defined rpg.world.%rpg.user.pos%.job (set "rpg.hud.inventory=open") else (set "rpg.hud.inventory=closed")
 	)
 
 ::controls description
@@ -123,18 +129,9 @@ set "rpg.hud.cont= [U] Equipment [I] Inventory"
 set "rpg.hud.cont2= [Q] Quit"
 if %rpg.user.status%==fight (set "rpg.hud.cont2=%rpg.hud.cont2% [E] Fight") else (set "rpg.hud.cont2=%rpg.hud.cont2% [E] Wait")
 
-::clear hud lines
-for /l %%l in (1,1,%rpg.hud.lines%) do set "rpg.hud.l%%l="
-set "rpg.hud.invkeys="
-
 ::fill hud
-set "rpg.hud.l2=   Map     Attributes"
-set "rpg.hud.l3=%rpg.map.dirNW%%rpg.map.dirN%%rpg.map.dirNE%   Str: %rpg.user.str% Con: %rpg.user.con% Dex: %rpg.user.dex%"
-set "rpg.hud.l4=%rpg.map.dirW%[x]%rpg.map.dirE%   Arm: %rpg.user.arm% Dps: %rpg.user.dps%"
-set "rpg.hud.l5=%rpg.map.dirSW%%rpg.map.dirS%%rpg.map.dirSE%   Gold: %rpg.user.gold%"
-set "rpg.hud.l7=Location: !rpg.world.%rpg.user.loc%.name!"
-if defined rpg.world.%rpg.user.loc%.enc ( set "rpg.hud.enc=There are enemies nearby.") else ( set "rpg.hud.enc=This is a safe place.")
-set "rpg.hud.l8=%rpg.hud.enc%"
+set "rpg.hud.l12=!rpg.world.%rpg.user.pos%.name! (%rpg.user.x%,%rpg.user.y%) Gold: %rpg.user.gold%"
+set "rpg.hud.l14=Str:%rpg.user.str% Con:%rpg.user.con% Dex:%rpg.user.dex% Arm:%rpg.user.arm% Dps:%rpg.user.dps%"
 
 ::show player/enemy hud (this is skipped if inventory or equipment are open)
 if "%rpg.hud.inventory%"=="open" goto :hudinventoryopen
@@ -186,7 +183,7 @@ if not defined rpg.hud.invpage set rpg.hud.invpage=1
 set /a "rpg.hud.invpages=1+(rpg.hud.invslot-1)/10"
 if !rpg.hud.invpage! GTR %rpg.hud.invpages% set /a "rpg.hud.invpage=1"
 
-::fill lines
+::fill inventory lines
 set /a "rpg.hud.invmin=1+10*(rpg.hud.invpage-1)"
 set /a "rpg.hud.invmax=rpg.hud.invmin+9"
 for /l %%l in (%rpg.hud.invmin%,1,%rpg.hud.invmax%) do (
@@ -257,10 +254,10 @@ for /l %%l in (1,1,%rpg.hud.lines%) do echo  !rpg.hud.l%%l:~0,%rpg.hud.left%! # 
 
 ::define avaiable moving controls
 set "rpg.hud.choice=%rpg.hud.keys%%rpg.hud.invkeys%"
-if not defined rpg.world.%rpg.user.loc%.dirN set rpg.hud.choice=%rpg.hud.choice:W=%
-if not defined rpg.world.%rpg.user.loc%.dirS set rpg.hud.choice=%rpg.hud.choice:S=%
-if not defined rpg.world.%rpg.user.loc%.dirW set rpg.hud.choice=%rpg.hud.choice:A=%
-if not defined rpg.world.%rpg.user.loc%.dirE set rpg.hud.choice=%rpg.hud.choice:D=%
+if not defined rpg.world.x%rpg.user.x%y%rpg.map.n%.name set "rpg.hud.choice=%rpg.hud.choice:W=%"
+if not defined rpg.world.x%rpg.user.x%y%rpg.map.s%.name set "rpg.hud.choice=%rpg.hud.choice:S=%"
+if not defined rpg.world.x%rpg.map.w%y%rpg.user.y%.name set "rpg.hud.choice=%rpg.hud.choice:A=%"
+if not defined rpg.world.x%rpg.map.e%y%rpg.user.y%.name set "rpg.hud.choice=%rpg.hud.choice:D=%"
 
 ::post execution time
 if defined rpg.time set /a "rpg.time+=1%time:~-10,1%%time:~-8,2%%time:~-5,2%%time:~-2,2%"
@@ -273,10 +270,10 @@ choice /n /c %rpg.hud.choice% /d E /t %rpg.delay% /m "!rpg.hud.message:~0,%rpg.h
 set /a "rpg.hud.input=%errorlevel%-1"
 set "rpg.hud.input=!rpg.hud.choice:~%rpg.hud.input%,1!"
 set "rpg.hud.action=loop"
-if [%rpg.hud.input%]==[W] if defined rpg.world.%rpg.user.loc%.dirN set "rpg.user.loc=!rpg.world.%rpg.user.loc%.dirN!"
-if [%rpg.hud.input%]==[S] if defined rpg.world.%rpg.user.loc%.dirS set "rpg.user.loc=!rpg.world.%rpg.user.loc%.dirS!"
-if [%rpg.hud.input%]==[A] if defined rpg.world.%rpg.user.loc%.dirW set "rpg.user.loc=!rpg.world.%rpg.user.loc%.dirW!"
-if [%rpg.hud.input%]==[D] if defined rpg.world.%rpg.user.loc%.dirE set "rpg.user.loc=!rpg.world.%rpg.user.loc%.dirE!"
+if [%rpg.hud.input%]==[W] set /a "rpg.user.y+=1"
+if [%rpg.hud.input%]==[S] set /a "rpg.user.y-=1"
+if [%rpg.hud.input%]==[A] set /a "rpg.user.x-=1"
+if [%rpg.hud.input%]==[D] set /a "rpg.user.x+=1"
 if [%rpg.hud.input%]==[Q] set "rpg.hud.action=quit"
 if [%rpg.hud.input%]==[E] if defined rpg.world.%rpg.user.loc%.enc (set "rpg.hud.action=engage") else (set "rpg.hud.action=wait")
 if [%rpg.hud.input%]==[R] set "rpg.hud.action=init"
@@ -314,6 +311,7 @@ set /p "rpg.user.name=Enter you name:"
 set "rpg.user.class=Warrior"
 set /a "rpg.user.xp=0, rpg.user.hp=1, rpg.user.gold=0, rpg.user.pw=0"
 set "rpg.user.loc=spawn"
+set /a "rpg.user.x=0, rpg.user.y=0"
 set "rpg.user.status=idle"
 goto:loop
 
