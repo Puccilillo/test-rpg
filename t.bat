@@ -5,6 +5,7 @@ set "appname=Test RPG"
 set "appdate=April 8, 2022"
 set "appver=0.9.0-alpha"
 ::
+::0.10.2 fixed pos detection
 ::0.10.1 tweaked world load code
 ::0.10.0 added map editor
 ::0.9.1 moved player hud based on new map
@@ -117,14 +118,18 @@ if defined rpg.world.x%rpg.map.e%y%rpg.user.y%.name set "rpg.hud.mov=!rpg.hud.mo
 
 ::print new location when moving
 if not defined rpg.hud.input set "rpg.hud.input=W"
-for %%d in (W,S,A,D) do if [%rpg.hud.input%]==[%%d] (
+for %%d in (W,S,A,D) do if [%rpg.hud.input%]==[%%d] if %rpg.map.edit%==on (
+	call :addline X:%rpg.user.x% Y:%rpg.user.y% Name: !rpg.world.%rpg.user.pos%.name!
+	call :addline Job: !rpg.world.%rpg.user.pos%.job! Enc: !rpg.world.%rpg.user.pos%.enc!
+	call :addline Desc: !rpg.world.%rpg.user.pos%.desc!
+	call :addline
+) else (
 	call :addline Location: !rpg.world.%rpg.user.pos%.name!
 	if defined rpg.world.%rpg.user.pos%.desc call :addline "!rpg.world.%rpg.user.pos%.desc!"
 	call :addline Directions: %rpg.hud.mov%
 	call :addline
-	::open/close invterface when entering shops/moving
 	if defined rpg.world.%rpg.user.pos%.job (set "rpg.hud.inventory=open") else (set "rpg.hud.inventory=closed")
-	)
+)
 
 ::controls description
 set "rpg.hud.cont= [U] Equipment [I] Inventory"
@@ -133,7 +138,7 @@ if %rpg.user.status%==fight (set "rpg.hud.cont2=%rpg.hud.cont2% [E] Fight") else
 
 ::fill hud
 set "rpg.hud.l12=!rpg.world.%rpg.user.pos%.name! (%rpg.user.x%,%rpg.user.y%) Gold: %rpg.user.gold%"
-if %rpg.map.edit%==on set "rpg.hud.l12=*%rpg.hud.l12%"
+if %rpg.map.edit%==on set "rpg.hud.l12=*Editing* %rpg.hud.l12%"
 set "rpg.hud.l14=Str:%rpg.user.str% Con:%rpg.user.con% Dex:%rpg.user.dex% Arm:%rpg.user.arm% Dps:%rpg.user.dps%"
 
 ::show player/enemy hud (this is skipped if inventory or equipment are open)
@@ -152,16 +157,16 @@ if not "%rpg.hud.inventory%"=="open" goto :hudinventoryclosed
 
 ::detect job and set action
 set "rpg.hud.l16=Inventory:" & set "rpg.hud.invaction=Use"
-if defined rpg.world.%rpg.user.loc%.job (
+if defined rpg.world.%rpg.user.pos%.job (
 	set "rpg.hud.l16=Choose an item to buy:" & set "rpg.hud.invaction=Buy"
-	if !rpg.world.%rpg.user.loc%.job!==merchant set "rpg.hud.l16=Choose an item to sell:" & set "rpg.hud.invaction=Sell"
+	if !rpg.world.%rpg.user.pos%.job!==merchant set "rpg.hud.l16=Choose an item to sell:" & set "rpg.hud.invaction=Sell"
 )
 
 ::list items
 if defined rpg.hud.inv[1] for /f "delims=^=" %%c in ('set rpg.hud.inv[') do set %%c=
 set /a "rpg.hud.invslot=0"
 set "rpg.hud.invtype=owned"
-if defined rpg.world.%rpg.user.loc%.job if not !rpg.world.%rpg.user.loc%.job!==merchant set "rpg.hud.invtype=shop"
+if defined rpg.world.%rpg.user.pos%.job if not !rpg.world.%rpg.user.pos%.job!==merchant set "rpg.hud.invtype=shop"
 if %rpg.hud.invtype%==owned (
 	for /f "tokens=1-4 delims=.^=" %%i in ('set rpg.inv.') do (
 		::item=%%k quantity=%%l
@@ -169,9 +174,9 @@ if %rpg.hud.invtype%==owned (
 		if %%l GEQ 1 set "rpg.hud.inv[!rpg.hud.invslot!]=%%k"
 	)
 ) else (
-	if !rpg.world.%rpg.user.loc%.job!==weaponsm set "rpg.hud.invslots=weapon"
-	if !rpg.world.%rpg.user.loc%.job!==armorsm set "rpg.hud.invslots=head torso arms belt legs feet shield"
-	if !rpg.world.%rpg.user.loc%.job!==tavern set "rpg.hud.invslots="
+	if !rpg.world.%rpg.user.pos%.job!==weaponsm set "rpg.hud.invslots=weapon"
+	if !rpg.world.%rpg.user.pos%.job!==armorsm set "rpg.hud.invslots=head torso arms belt legs feet shield"
+	if !rpg.world.%rpg.user.pos%.job!==tavern set "rpg.hud.invslots="
 	for /f "tokens=1-5 delims=.^=" %%i in ('set rpg.item.') do (
 		::item=%%k property=%%l value=%%m
 		for %%s in (!rpg.hud.invslots!) do (
@@ -282,7 +287,7 @@ if [%rpg.hud.input%]==[S] set /a "rpg.user.y-=1"
 if [%rpg.hud.input%]==[A] set /a "rpg.user.x-=1"
 if [%rpg.hud.input%]==[D] set /a "rpg.user.x+=1"
 if [%rpg.hud.input%]==[Q] set "rpg.hud.action=quit"
-if [%rpg.hud.input%]==[E] if defined rpg.world.%rpg.user.loc%.enc (set "rpg.hud.action=engage") else (set "rpg.hud.action=wait")
+if [%rpg.hud.input%]==[E] if defined rpg.world.%rpg.user.pos%.enc (set "rpg.hud.action=engage") else (set "rpg.hud.action=wait")
 if [%rpg.hud.input%]==[R] set "rpg.hud.action=init"
 if [%rpg.hud.input%]==[U] set "rpg.hud.action=equipment"
 if [%rpg.hud.input%]==[I] set "rpg.hud.action=inventory"
@@ -292,9 +297,9 @@ if [%rpg.hud.input%]==[H] set /p rpg.user.hp="New hp (%rpg.user.hp%):"
 if [%rpg.hud.input%]==[K] set "rpg.enemy.hp=0"
 if [%rpg.hud.input%]==[X] set /p rpg.user.xp="New XP (%rpg.user.xp%)"
 if [%rpg.hud.input%]==[V] set /p rpg.delay="New delay (%rpg.delay%):" & if !rpg.delay! LSS 1 set "rpg.delay=1"
-if [%rpg.hud.input%]==[M] if %rpg.map.edit%==on (set "rpg.map.edit=off") else (set "rpg.map.edit=on" & call :addline Map editor: [L] Location info [T] Edit/Add [C] Save map)
+if [%rpg.hud.input%]==[M] if %rpg.map.edit%==on (set "rpg.map.edit=off") else (set "rpg.map.edit=on" & call :addline Map editor: [L] List enemies [T] Edit/Add [C] Save map)
 if [%rpg.hud.input%]==[C] set rpg.world > world.dat
-if [%rpg.hud.input%]==[L] set "rpg.hud.action=maplook"
+if [%rpg.hud.input%]==[L] for /f "tokens=3-5 delims=.^=" %%e in ('set rpg.enemy') do if %%f==name call :addline Liv: !rpg.enemy.%%e.max! %%e (!rpg.enemy.%%e.name!)
 if [%rpg.hud.input%]==[T] set "rpg.hud.action=maptune"
 if [%rpg.hud.input%]==[1] set "rpg.hud.action=use"
 if [%rpg.hud.input%]==[2] set "rpg.hud.action=use"
@@ -321,7 +326,6 @@ cls
 set /p "rpg.user.name=Enter you name:"
 set "rpg.user.class=Warrior"
 set /a "rpg.user.xp=0, rpg.user.hp=1, rpg.user.gold=0, rpg.user.pw=0"
-set "rpg.user.loc=spawn"
 set /a "rpg.user.x=0, rpg.user.y=0"
 set "rpg.user.status=idle"
 goto:loop
@@ -338,17 +342,15 @@ goto :eof
 ::pick random enemy (this is skipped if user is already in fight)
 :engage
 if defined rpg.enemy.id goto :fight
-::chance to fight is 1 over 8*ndir
-set /a "rpg.enemy.chance=0"
-for /f %%d in ('set rpg.world.%rpg.user.loc%.dir') do set /a "rpg.enemy.chance+=1"
-set /a "rpg.enemy.chance*=8"
+::chance to fight is 1 over 8
+set /a "rpg.enemy.chance=8"
 set /a "rpg.enemy.rnd=%random% %%rpg.enemy.chance"
 if %rpg.enemy.rnd% GTR 0 goto :wait
 ::fight is on
 set "rpg.user.status=fight"
 ::pick rnd enemy
 set /a rpg.enemy.count=0
-for %%e in (!rpg.world.%rpg.user.loc%.enc!) do (
+for %%e in (!rpg.world.%rpg.user.pos%.enc!) do (
 	set rpg.enemy.id!rpg.enemy.count!=%%e
 	set /a rpg.enemy.count+=1
 	)
@@ -401,15 +403,8 @@ if defined rpg.item.%rpg.hud.use%.slot (
 )
 goto :loop
 
-:maplook
-call :addline X:%rpg.user.x% Y:%rpg.user.y% Name: !rpg.world.%rpg.user.pos%.name!
-call :addline Enc: !rpg.world.%rpg.user.pos%.enc! Job: !rpg.world.%rpg.user.pos%.job!
-call :addline Desc: !rpg.world.%rpg.user.pos%.desc!
-call :addline
-goto :loop
-
 :maptune
-for %%t in (name desc enc job) do (
+for %%t in (name job enc desc) do (
 	set /p "rpg.world.%rpg.user.pos%.%%t=%%t (!rpg.world.%rpg.user.pos%.%%t!):"
 	if "!rpg.world.%rpg.user.pos%.%%t!"=="-" set "rpg.world.%rpg.user.pos%.%%t="
 )
@@ -507,7 +502,7 @@ exit /b
 :reward
 ::get xp
 set /a "rpg.drop.xp=25*(rpg.enemy.level+1)*rpg.enemy.level/(rpg.enemy.level+10)*rpg.enemy.level/rpg.user.level"
-set /a "rpg.drop.xpcap=30*(rpg.user.level+1)*rpg.user.level/(rpg.user.level+10)"
+set /a "rpg.drop.xpcap=25*(rpg.user.level+2)*(rpg.user.level+1)/(rpg.user.level+11)"
 if %rpg.drop.xp% GTR %rpg.drop.xpcap% set /a "rpg.drop.xp=rpg.drop.xpcap"
 set /a "rpg.drop.xpratio=rpg.drop.xp*100/rpg.drop.xpcap"
 set /a "rpg.drop.gold=(%random% %%rpg.enemy.level)+1+(rpg.enemy.level/10)"
