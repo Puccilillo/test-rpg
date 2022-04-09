@@ -2,8 +2,8 @@
 setlocal enableextensions
 setlocal enabledelayedexpansion
 set "appname=Test RPG"
-set "appdate=April 9, 2022"
-set "appver=0.10.3-alpha"
+set "appdate=April 10, 2022"
+set "appver=0.11.0-alpha"
 ::
 ::0.11.0 added code for different map tiles
 ::0.10.3 code optimization
