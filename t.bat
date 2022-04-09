@@ -2,9 +2,10 @@
 setlocal enableextensions
 setlocal enabledelayedexpansion
 set "appname=Test RPG"
-set "appdate=April 8, 2022"
-set "appver=0.9.0-alpha"
+set "appdate=April 9, 2022"
+set "appver=0.10.3-alpha"
 ::
+::0.10.3 code optimization
 ::0.10.2 fixed pos detection
 ::0.10.1 tweaked world load code
 ::0.10.0 added map editor
@@ -34,9 +35,9 @@ for /l %%f in (1,2,%rpg.hud.right%) do set "rpg.hud.filler=!rpg.hud.filler!.:"
 for /l %%m in (1,1,200) do set /a "rpg.hud.xpm%%m=25*%%m*(%%m-1), rpg.hud.xpx%%m=25*%%m*(%%m+1)"
 
 :load
-for /f "delims=" %%w in (world.dat) do set "%%~w"
 for /f "delims=" %%m in (enemies.dat) do set "rpg.enemy.%%m"
 for /f "delims=" %%e in (items.dat) do set "rpg.item.%%e"
+for /f "delims=" %%w in (world.dat) do set "%%~w"
 
 ::look for saved game or create new
 if exist user.sav (for /f "delims=" %%u in (user.sav) do set "%%u") else goto :create
@@ -44,11 +45,11 @@ if exist user.sav (for /f "delims=" %%u in (user.sav) do set "%%u") else goto :c
 :loop
 
 :findlevel
+if defined rpg.user.xpmax if %rpg.user.xp% LSS %rpg.user.xpmax% if %rpg.user.xp% GEQ %rpg.user.xpmin% goto :findlevelxp
 set "rpg.user.level="
-for /l %%l in (200,-1,1) do if defined rpg.user.level (goto :foundlevel) else (if %rpg.user.xp% GEQ !rpg.hud.xpm%%l! set /a "rpg.user.level=%%l")
+for /l %%l in (200,-1,1) do if defined rpg.user.level (goto :findlevelxp) else (if %rpg.user.xp% GEQ !rpg.hud.xpm%%l! set /a "rpg.user.level=%%l")
 
-:foundlevel
-
+:findlevelxp
 ::calc XPMAX=25*L*(L+1) XPMIN=25*L*(L-1)
 set /a "rpg.user.xpmax=rpg.hud.xpx%rpg.user.level%, rpg.user.xpmin=rpg.hud.xpm%rpg.user.level%"
 set /a "rpg.user.xpcur=rpg.user.xp-rpg.user.xpmin"
@@ -97,13 +98,15 @@ set /a "rpg.hud.l=1"
 set /a "rpg.map.ymin=rpg.user.y-(rpg.map.height-1)/2, rpg.map.ymax=rpg.user.y+(rpg.map.height-1)/2"
 set /a "rpg.map.xmin=rpg.user.x-6, rpg.map.xmax=rpg.user.x+6"
 for /l %%y in (!rpg.map.ymax!,-1,!rpg.map.ymin!) do (
+	set "rpg.map.line="
 	for /l %%x in (!rpg.map.xmin!,1,!rpg.map.xmax!) do (
-		set "rpg.map.tile=.:."
-		if defined rpg.world.x%%xy%%y.name set "rpg.map.tile=[ ]"
+		if defined rpg.world.x%%xy%%y.name (set "rpg.map.tile=[ ]") else (set "rpg.map.tile=.:.")
 		if defined rpg.world.x%%xy%%y.job set "rpg.map.tile=[$]"
-		if %rpg.user.pos%==x%%xy%%y set "rpg.map.tile=[x]"
-		call set "rpg.hud.l!rpg.hud.l!=%%rpg.hud.l!rpg.hud.l!%%!rpg.map.tile!"
+		if defined rpg.world.x%%xy%%y.enc set "rpg.map.tile=[^!]"
+		if x%%xy%%y==%rpg.user.pos% set "rpg.map.tile=[x]"
+		set "rpg.map.line=!rpg.map.line!!rpg.map.tile!"
 	)
+	set "rpg.hud.l!rpg.hud.l!=!rpg.map.line!"
 	set /a "rpg.hud.l+=1"
 )
 
@@ -124,8 +127,8 @@ for %%d in (W,S,A,D) do if [%rpg.hud.input%]==[%%d] if %rpg.map.edit%==on (
 	call :addline Desc: !rpg.world.%rpg.user.pos%.desc!
 	call :addline
 ) else (
-	call :addline Location: !rpg.world.%rpg.user.pos%.name!
 	if defined rpg.world.%rpg.user.pos%.desc call :addline "!rpg.world.%rpg.user.pos%.desc!"
+	call :addline Location: !rpg.world.%rpg.user.pos%.name!
 	call :addline Directions: %rpg.hud.mov%
 	call :addline
 	if defined rpg.world.%rpg.user.pos%.job (set "rpg.hud.inventory=open") else (set "rpg.hud.inventory=closed")
@@ -299,7 +302,7 @@ if [%rpg.hud.input%]==[X] set /p rpg.user.xp="New XP (%rpg.user.xp%)"
 if [%rpg.hud.input%]==[V] set /p rpg.delay="New delay (%rpg.delay%):" & if !rpg.delay! LSS 1 set "rpg.delay=1"
 if [%rpg.hud.input%]==[M] if %rpg.map.edit%==on (set "rpg.map.edit=off") else (set "rpg.map.edit=on" & call :addline Map editor: [L] List enemies [T] Edit/Add [C] Save map)
 if [%rpg.hud.input%]==[C] set rpg.world > world.dat
-if [%rpg.hud.input%]==[L] for /f "tokens=3-5 delims=.^=" %%e in ('set rpg.enemy') do if %%f==name call :addline Liv: !rpg.enemy.%%e.max! %%e (!rpg.enemy.%%e.name!)
+if [%rpg.hud.input%]==[L] for /f "tokens=3-5 delims=.^=" %%e in ('set rpg.enemy') do if %%f==name call :addline Lev: !rpg.enemy.%%e.max! %%e (!rpg.enemy.%%e.name!)
 if [%rpg.hud.input%]==[T] set "rpg.hud.action=maptune"
 if [%rpg.hud.input%]==[1] set "rpg.hud.action=use"
 if [%rpg.hud.input%]==[2] set "rpg.hud.action=use"
@@ -539,4 +542,12 @@ if defined rpg.dmg.val for /f "delims=^=" %%c in ('set rpg.dmg') do set %%c=
 if defined rpg.enemy.id set rpg.enemy.id=
 set "rpg.user.status=idle"
 set "rpg.user.action="
+exit /b
+
+::get execution time from last call
+:gettime
+if not defined rpg.timer set /a "rpg.time=-1%time:~-10,1%%time:~-8,2%%time:~-5,2%%time:~-2,2%"
+set /a "rpg.timer+=1%time:~-10,1%%time:~-8,2%%time:~-5,2%%time:~-2,2%"
+echo %time%;!rpg.timer!;%* >> time.log
+set /a "rpg.timer=-1%time:~-10,1%%time:~-8,2%%time:~-5,2%%time:~-2,2%"
 exit /b
