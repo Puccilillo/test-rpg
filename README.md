@@ -22,6 +22,8 @@ The main features are:
 - Working health and power regeneration over time
 - Sellable loot to merchant
 - Working armor/weapon vendors
+- In-game map editor
+- Actived admin commands for test purpose
 
 # PLANNED FEATURES
 - Crafting and gathering skills
