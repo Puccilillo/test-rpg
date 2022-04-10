@@ -3,16 +3,11 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
 set appdate=April 10, 2022
-set appver=0.11.1-alpha
+set appver=0.11.2-alpha
 ::
+::0.11.2 better equipment code
 ::0.11.1 removed extra quotation marks + replaced calls with fors
 ::0.11.0 added code for different map tiles
-::0.10.3 code optimization
-::0.10.2 fixed pos detection
-::0.10.1 tweaked world load code
-::0.10.0 added map editor
-::0.9.1 moved player hud based on new map
-::0.9.0 new map engine / world definition
 ::
 :init
 title %appname% v%appver% - %appdate%
@@ -30,6 +25,10 @@ set /a rpg.delay=3
 set rpg.hud.adminkeys=GHKXVM
 set rpg.hud.mapkeys=CLT
 set rpg.hud.keys=WSADQERUI%rpg.hud.adminkeys%
+set /a rpg.hud.armitems=0
+set /a rpg.hud.wepitems=0
+set /a rpg.hud.armitem=1
+set /a rpg.hud.wepitem=1
 for /l %%b in (1,1,%rpg.hud.barsize%) do set rpg.hud.bar=/!rpg.hud.bar!-
 for /l %%s in (1,1,%rpg.hud.left%) do set "rpg.hud.spacer=!rpg.hud.spacer! "
 for /l %%f in (1,2,%rpg.hud.right%) do set rpg.hud.filler=!rpg.hud.filler!.:
@@ -39,8 +38,8 @@ for /l %%m in (1,1,200) do (
 )
 
 :load
-for /f "delims=" %%m in (enemies.dat) do set rpg.enemy.%%m
-for /f "delims=" %%e in (items.dat) do set rpg.item.%%e
+for /f "delims=" %%e in (enemies.dat) do set rpg.enemy.%%e
+for /f "delims=" %%i in (items.dat) do set rpg.item.%%i
 for /f "delims=" %%w in (world.dat) do set %%~w
 
 ::look for saved game or create new
@@ -223,6 +222,7 @@ if defined rpg.hud.inv[1] for /f "delims=^=" %%c in ('set rpg.hud.inv[') do set 
 set /a rpg.hud.invslot=0
 
 ::set actions based on job type
+::list shop items based on slot groups
 if defined rpg.world.%rpg.user.pos%.job (
 	if not !rpg.world.%rpg.user.pos%.job!==merchant (
 		set rpg.hud.l16=Choose an item to buy:
@@ -315,55 +315,16 @@ if %rpg.hud.invpages% GTR 1 (
 if not "%rpg.hud.equipment%"=="open" goto :hudequipmentclosed
 :hudequipmentopen
 set rpg.hud.l16=Equipment:
-if defined rpg.user.head (
-	set rpg.hud.l17= Head [1] !rpg.item.%rpg.user.head%.name! (+!rpg.item.%rpg.user.head%.arm!)
-	set rpg.hud.invkeys=%rpg.hud.invkeys%1
-	set rpg.hud.unequip[1]=head
-)
-if defined rpg.user.torso (
-	set rpg.hud.l18= Torso [2] !rpg.item.%rpg.user.torso%.name! (+!rpg.item.%rpg.user.torso%.arm!)
-	set rpg.hud.invkeys=%rpg.hud.invkeys%2
-	set rpg.hud.unequip[2]=torso
-)
-if defined rpg.user.arms (
-	set rpg.hud.l19= Arms [3] !rpg.item.%rpg.user.arms%.name! (+!rpg.item.%rpg.user.arms%.arm!)
-	set rpg.hud.invkeys=%rpg.hud.invkeys%3
-	set rpg.hud.unequip[3]=arms
-)
-if defined rpg.user.legs (
-	set rpg.hud.l20= Legs [4] !rpg.item.%rpg.user.legs%.name! (+!rpg.item.%rpg.user.legs%.arm!)
-	set rpg.hud.invkeys=%rpg.hud.invkeys%4
-	set rpg.hud.unequip[4]=legs
-)
-if defined rpg.user.feet (
-	set rpg.hud.l21= Feet [5] !rpg.item.%rpg.user.feet%.name! (+!rpg.item.%rpg.user.feet%.arm!)
-	set rpg.hud.invkeys=%rpg.hud.invkeys%5
-	set rpg.hud.unequip[5]=feet
-)
-if defined rpg.user.neck (
-	set rpg.hud.l23= Legs [6] !rpg.item.%rpg.user.neck%.name! (+!rpg.item.%rpg.user.neck%.val!)
-	set rpg.hud.invkeys=%rpg.hud.invkeys%6
-	set rpg.hud.unequip[6]=neck
-)
-if defined rpg.user.jewel (
-	set rpg.hud.l24= Jewel [7] !rpg.item.%rpg.user.jewel%.name! (+!rpg.item.%rpg.user.jewel%.val!)
-	set rpg.hud.invkeys=%rpg.hud.invkeys%7
-	set rpg.hud.unequip[7]=jewel
-)
-if defined rpg.user.belt (
-	set rpg.hud.l25= Belt [8] !rpg.item.%rpg.user.belt%.name! (+!rpg.item.%rpg.user.belt%.val!)
-	set rpg.hud.invkeys=%rpg.hud.invkeys%8
-	set rpg.hud.unequip[8]=belt
-)
-if defined rpg.user.weapon (
-	set rpg.hud.l27= Weapon [9] !rpg.item.%rpg.user.weapon%.name! (+!rpg.item.%rpg.user.weapon%.dps!)
-	set rpg.hud.invkeys=%rpg.hud.invkeys%9
-	set rpg.hud.unequip[9]=weapon
-)
-if defined rpg.user.shield (
-	set rpg.hud.l28= Shield [0] !rpg.item.%rpg.user.shield%.name! (+!rpg.item.%rpg.user.shield%.arm!)
-	set rpg.hud.invkeys=%rpg.hud.invkeys%0
-	set rpg.hud.unequip[0]=shield
+set /a rpg.hud.line=17
+set /a rpg.hud.slot=1
+for %%s in (Head Torso Arms Legs Feet Neck Jewel Belt Weapon Shield) do (
+	if defined rpg.user.%%s for %%v in (!rpg.user.%%s!) do (
+		set "rpg.hud.l!rpg.hud.line!= %%s [!rpg.hud.slot:~-1!] !rpg.item.%%v.name! (+!rpg.item.%%v.arm!!rpg.item.%%v.dps!)"
+		set rpg.hud.invkeys=!rpg.hud.invkeys!!rpg.hud.slot:~-1!
+		set rpg.hud.unequip[!rpg.hud.slot:~-1!]=%%s
+	)
+	set /a rpg.hud.line+=1
+	set /a rpg.hud.slot+=1
 )
 set rpg.hud.cont2=%rpg.hud.cont2% [0-9] Unequip
 
