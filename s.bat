@@ -5,13 +5,14 @@ set "spacer=                    "
 
 :menu
 cls
-echo [1] world
+echo [x] world
 echo [2] enemies
 echo [3] items
 choice /c:123 /n /m:"Choose file:"
 goto menu%errorlevel%
 
 :menu1 world
+goto :menu
 set rpg.list=
 for /f "delims=" %%w in (world.dat) do set "rpg.world.%%w"
 for /f "tokens=3-4 delims=.^=" %%m in ('set rpg.world') do if %%n==name set "rpg.list=!rpg.list! %%m"
