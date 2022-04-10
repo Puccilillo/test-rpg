@@ -18,8 +18,8 @@ The main features are:
 - Dynamic controls (change based on location)
 - Multi-page inventory
 - Equipable items (Many weapons and armors)
-- Advanced damage calculation involving dps and armor resist
-- Working health and power regeneration overtime
+- Advanced damage calculation with dps and armor resist
+- Working health and power regeneration over time
 - Sellable loot to merchant
 - Working armor/weapon vendors
 
