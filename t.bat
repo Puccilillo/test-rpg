@@ -42,9 +42,19 @@ for /l %%m in (1,1,200) do (
 )
 
 :load
+echo Loading...
+
+::start new timer
+set /a rpg.time=-1%time:~-10,1%%time:~-8,2%%time:~-5,2%%time:~-2,2%
+
+::finally an online feature
+::this parse data files, try to download missing
+for %%f in (enemies items world) do if not exist %%f.dat curl -s -O https://raw.githubusercontent.com/Puccilillo/test-rpg/main/%%f.dat
+
+::maybe change this to the same operation for all the files
 for /f "delims=" %%e in (enemies.dat) do set rpg.enemy.%%e
 for /f "delims=" %%i in (items.dat) do set rpg.item.%%i
-for /f "delims=" %%w in (world.dat) do set %%~w
+for /f "delims=" %%w in (world.dat) do set %%w
 
 ::look for saved game or create new
 if not exist user.sav goto :create
