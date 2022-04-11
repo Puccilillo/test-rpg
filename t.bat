@@ -3,8 +3,9 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
 set appdate=April 11, 2022
-set appver=0.11.5-alpha
+set appver=0.11.6-alpha
 ::
+::0.11.6 removed items listing for admin in game
 ::0.11.5 added items listing with L
 ::0.11.4 tweaked enemy str/con formula
 ::0.11.3 tweaked encounter chance code
@@ -25,8 +26,8 @@ set /a rpg.hud.right=rpg.hud.cols-rpg.hud.left-5
 set /a rpg.hud.barsize=(rpg.hud.left+1)/2
 set /a rpg.inv.nullitem=0
 set /a rpg.delay=3
-set rpg.hud.adminkeys=GHKXVML
-set rpg.hud.mapkeys=CT
+set rpg.hud.adminkeys=GHKXVM
+set rpg.hud.mapkeys=TLC
 set rpg.hud.keys=WSADQERUI%rpg.hud.adminkeys%
 set /a rpg.hud.armitems=0
 set /a rpg.hud.wepitems=0
@@ -402,11 +403,7 @@ if [%rpg.hud.input%]==[M] if %rpg.map.edit%==on (
 	call :addline Map editor: [L] List enemies [T] Edit/Add [C] Save map
 )
 if [%rpg.hud.input%]==[C] set rpg.world > world.dat
-if [%rpg.hud.input%]==[L] if %rpg.map.edit%==on (
-	for /f "tokens=3-5 delims=.^=" %%e in ('set rpg.enemy') do if %%f==name call :addline Lev: !rpg.enemy.%%e.max! %%e (!rpg.enemy.%%e.name!)
-) else (
-	for /f "tokens=3-5 delims=.^=" %%e in ('set rpg.item') do if %%f==name call :addline Dps/Arm: !rpg.item.%%e.dps!!rpg.item.%%e.arm! %%e (!rpg.item.%%e.name!)
-)
+if [%rpg.hud.input%]==[L] for /f "tokens=3-5 delims=.^=" %%e in ('set rpg.enemy') do if %%f==name call :addline Lev: !rpg.enemy.%%e.max! %%e (!rpg.enemy.%%e.name!)
 if [%rpg.hud.input%]==[T] goto :maptune
 if [%rpg.hud.input%]==[1] goto :use
 if [%rpg.hud.input%]==[2] goto :use
