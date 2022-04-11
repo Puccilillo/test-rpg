@@ -3,8 +3,9 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
 set appdate=April 11, 2022
-set appver=0.11.6-alpha
+set appver=0.12.0-alpha
 ::
+::0.12.0 added online backup code for missing game files
 ::0.11.6 removed items listing for admin in game
 ::0.11.5 added items listing with L
 ::0.11.4 tweaked enemy str/con formula
