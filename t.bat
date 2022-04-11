@@ -3,8 +3,9 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
 set appdate=April 10, 2022
-set appver=0.11.2-alpha
+set appver=0.11.3-alpha
 ::
+::0.11.3 tweaked encounter chance code
 ::0.11.2 better equipment code
 ::0.11.1 removed extra quotation marks + replaced calls with fors
 ::0.11.0 added code for different map tiles
@@ -196,7 +197,7 @@ if %rpg.user.status%==fight (
 )
 
 ::set hud info
-set rpg.hud.l12=!rpg.world.%rpg.user.pos%.name! (%rpg.user.x%,%rpg.user.y%) Gold: %rpg.user.gold% \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
+set rpg.hud.l12=(%rpg.user.x%,%rpg.user.y%) !rpg.world.%rpg.user.pos%.name! Gold: %rpg.user.gold% \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
 if %rpg.map.edit%==on set rpg.hud.l12=*Editing* %rpg.hud.l12%
 set rpg.hud.l14=Str:%rpg.user.str% Con:%rpg.user.con% Dex:%rpg.user.dex% Arm:%rpg.user.arm% Dps:%rpg.user.dps%
 
@@ -443,8 +444,8 @@ goto :eof
 :engage
 if not defined rpg.world.%rpg.user.pos%.enc goto :wait
 if defined rpg.enemy.id goto :fight
-::chance to fight is 1 over 8
-set /a rpg.enemy.chance=8
+::chance to fight 20+(lev+1)/10+missinghp%/10
+set /a rpg.enemy.chance=20/(1+rpg.user.level/10)+10-10*rpg.user.hp/rpg.user.hpmax
 set /a rpg.enemy.rnd=%random% %%rpg.enemy.chance
 if %rpg.enemy.rnd% GTR 0 goto :wait
 ::fight is on
@@ -531,12 +532,12 @@ if %rpg.user.hp% EQU 0 goto :death
 if %rpg.enemy.hp% EQU 0 goto :victory
 if %rpg.user.action%==attack (
 	call :dmgcalc %rpg.user.level% %rpg.enemy.str% %rpg.user.dps% %rpg.enemy.arm% %rpg.enemy.level%
-	if !rpg.dmg.val! GTR 0 call :addline You hit %rpg.enemy.name% for %rpg.dmg.val% damage.
+	if !rpg.dmg.val! GTR 0 call :addline You hit %rpg.enemy.name% for !rpg.dmg.val! damage.
 	set /a rpg.enemy.hp-=rpg.dmg.val
 	set rpg.user.action=defend
 ) else (
 	call :dmgcalc %rpg.enemy.level% %rpg.user.str% 0 %rpg.user.arm% %rpg.user.level%
-	if !rpg.dmg.val! GTR 0 call :addline %rpg.enemy.name% hits you for %rpg.dmg.val% damage.
+	if !rpg.dmg.val! GTR 0 call :addline %rpg.enemy.name% hits you for !rpg.dmg.val! damage.
 	if !rpg.dmg.val! GTR 0 color C7
 	set /a rpg.user.hp-=rpg.dmg.val
 	set rpg.user.action=attack
