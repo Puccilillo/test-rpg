@@ -2,9 +2,11 @@
 setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
-set appdate=April 10, 2022
-set appver=0.11.3-alpha
+set appdate=April 11, 2022
+set appver=0.11.5-alpha
 ::
+::0.11.5 added items listing with L
+::0.11.4 tweaked enemy str/con formula
 ::0.11.3 tweaked encounter chance code
 ::0.11.2 better equipment code
 ::0.11.1 removed extra quotation marks + replaced calls with fors
@@ -23,8 +25,8 @@ set /a rpg.hud.right=rpg.hud.cols-rpg.hud.left-5
 set /a rpg.hud.barsize=(rpg.hud.left+1)/2
 set /a rpg.inv.nullitem=0
 set /a rpg.delay=3
-set rpg.hud.adminkeys=GHKXVM
-set rpg.hud.mapkeys=CLT
+set rpg.hud.adminkeys=GHKXVML
+set rpg.hud.mapkeys=CT
 set rpg.hud.keys=WSADQERUI%rpg.hud.adminkeys%
 set /a rpg.hud.armitems=0
 set /a rpg.hud.wepitems=0
@@ -112,7 +114,7 @@ set rpg.hud.xpbar=[!rpg.hud.bar:~%rpg.hud.xpbar.progress%,%rpg.hud.barsize%!]
 ::create foebar
 if %rpg.user.status%==fight (
 	set /a "rpg.hud.foebar.progress=rpg.hud.barsize-(rpg.hud.barsize*rpg.enemy.hp/rpg.enemy.hpmax)"
-	set rpg.hud.foebar=[!rpg.hud.bar:~%rpg.hud.foebar.progress%,%rpg.hud.barsize%!]
+	for %%v in (!rpg.hud.foebar.progress!) do set rpg.hud.foebar=[!rpg.hud.bar:~%%v,%rpg.hud.barsize%!]
 )
 
 ::clear hud lines exept map
@@ -197,7 +199,7 @@ if %rpg.user.status%==fight (
 )
 
 ::set hud info
-set rpg.hud.l12=(%rpg.user.x%,%rpg.user.y%) !rpg.world.%rpg.user.pos%.name! Gold: %rpg.user.gold% \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
+set rpg.hud.l12=(%rpg.user.x%,%rpg.user.y%) !rpg.world.%rpg.user.pos%.name! *** Gold: %rpg.user.gold% ***
 if %rpg.map.edit%==on set rpg.hud.l12=*Editing* %rpg.hud.l12%
 set rpg.hud.l14=Str:%rpg.user.str% Con:%rpg.user.con% Dex:%rpg.user.dex% Arm:%rpg.user.arm% Dps:%rpg.user.dps%
 
@@ -400,7 +402,11 @@ if [%rpg.hud.input%]==[M] if %rpg.map.edit%==on (
 	call :addline Map editor: [L] List enemies [T] Edit/Add [C] Save map
 )
 if [%rpg.hud.input%]==[C] set rpg.world > world.dat
-if [%rpg.hud.input%]==[L] for /f "tokens=3-5 delims=.^=" %%e in ('set rpg.enemy') do if %%f==name call :addline Lev: !rpg.enemy.%%e.max! %%e (!rpg.enemy.%%e.name!)
+if [%rpg.hud.input%]==[L] if %rpg.map.edit%==on (
+	for /f "tokens=3-5 delims=.^=" %%e in ('set rpg.enemy') do if %%f==name call :addline Lev: !rpg.enemy.%%e.max! %%e (!rpg.enemy.%%e.name!)
+) else (
+	for /f "tokens=3-5 delims=.^=" %%e in ('set rpg.item') do if %%f==name call :addline Dps/Arm: !rpg.item.%%e.dps!!rpg.item.%%e.arm! %%e (!rpg.item.%%e.name!)
+)
 if [%rpg.hud.input%]==[T] goto :maptune
 if [%rpg.hud.input%]==[1] goto :use
 if [%rpg.hud.input%]==[2] goto :use
@@ -445,7 +451,7 @@ goto :eof
 if not defined rpg.world.%rpg.user.pos%.enc goto :wait
 if defined rpg.enemy.id goto :fight
 ::chance to fight 20+(lev+1)/10+missinghp%/10
-set /a rpg.enemy.chance=20/(1+rpg.user.level/10)+10-10*rpg.user.hp/rpg.user.hpmax
+set /a rpg.enemy.chance=30/(1+rpg.user.level/10)+10-10*rpg.user.hp/rpg.user.hpmax
 set /a rpg.enemy.rnd=%random% %%rpg.enemy.chance
 if %rpg.enemy.rnd% GTR 0 goto :wait
 ::fight is on
@@ -466,11 +472,11 @@ set /a rpg.enemy.min=rpg.enemy.max*9/11
 if %rpg.enemy.min% LEQ 0 set /a rpg.enemy.min=1
 set /a rpg.enemy.rng=1+rpg.enemy.max-rpg.enemy.min
 set /a rpg.enemy.level=(%random% %%rpg.enemy.rng)+rpg.enemy.min
-if not defined rpg.enemy.str set /a rpg.enemy.str=10
-if not defined rpg.enemy.con set /a rpg.enemy.con=10
+set /a rpg.enemy.str=10+rpg.enemy.level/2
+set /a rpg.enemy.con=10+rpg.enemy.level/2
 set /a rpg.enemy.hpmax=rpg.enemy.con*20+rpg.enemy.level*50
 set /a rpg.enemy.hp=rpg.enemy.hpmax
-call :addline You encounter a %rpg.enemy.name%.
+call :addline You encounter a %rpg.enemy.name% [%rpg.enemy.level%].
 goto :loop
 
 :: rest (need to implement hp and pw regen bonuses)
@@ -531,12 +537,12 @@ if not defined rpg.user.action set rpg.user.action=defend
 if %rpg.user.hp% EQU 0 goto :death
 if %rpg.enemy.hp% EQU 0 goto :victory
 if %rpg.user.action%==attack (
-	call :dmgcalc %rpg.user.level% %rpg.enemy.str% %rpg.user.dps% %rpg.enemy.arm% %rpg.enemy.level%
+	call :dmgcalc %rpg.user.level% %rpg.user.str% %rpg.user.dps% %rpg.enemy.arm% %rpg.enemy.level%
 	if !rpg.dmg.val! GTR 0 call :addline You hit %rpg.enemy.name% for !rpg.dmg.val! damage.
 	set /a rpg.enemy.hp-=rpg.dmg.val
 	set rpg.user.action=defend
 ) else (
-	call :dmgcalc %rpg.enemy.level% %rpg.user.str% 0 %rpg.user.arm% %rpg.user.level%
+	call :dmgcalc %rpg.enemy.level% %rpg.enemy.str% 0 %rpg.user.arm% %rpg.user.level%
 	if !rpg.dmg.val! GTR 0 call :addline %rpg.enemy.name% hits you for !rpg.dmg.val! damage.
 	if !rpg.dmg.val! GTR 0 color C7
 	set /a rpg.user.hp-=rpg.dmg.val
