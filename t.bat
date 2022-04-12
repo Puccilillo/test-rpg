@@ -3,8 +3,9 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
 set appdate=April 11, 2022
-set appver=0.12.0-alpha
+set appver=0.12.1-alpha
 ::
+::0.12.1 wider screen setup, auto scaling map
 ::0.12.0 added online backup code for missing game files
 ::0.11.6 removed items listing for admin in game
 ::0.11.5 added items listing with L
@@ -18,13 +19,13 @@ set appver=0.12.0-alpha
 title %appname% v%appver% - %appdate%
 set rpg.init=true
 for /f "delims=^=" %%i in ('set rpg.') do set %%i=
-set /a rpg.hud.cols=142
-set /a rpg.hud.rows=36
+set /a rpg.hud.cols=170
+set /a rpg.hud.rows=40
 mode con cols=%rpg.hud.cols% lines=%rpg.hud.rows%
 set /a rpg.hud.lines=rpg.hud.rows-2
-set /a rpg.hud.left=39
+set /a rpg.hud.left=rpg.hud.cols/3
 set /a rpg.hud.right=rpg.hud.cols-rpg.hud.left-5
-set /a rpg.hud.barsize=(rpg.hud.left+1)/2
+set /a rpg.hud.barsize=rpg.hud.left-20
 set /a rpg.inv.nullitem=0
 set /a rpg.delay=3
 set rpg.hud.adminkeys=GHKXVM
@@ -37,6 +38,8 @@ set /a rpg.hud.wepitem=1
 for /l %%b in (1,1,%rpg.hud.barsize%) do set rpg.hud.bar=/!rpg.hud.bar!-
 for /l %%s in (1,1,%rpg.hud.left%) do set "rpg.hud.spacer=!rpg.hud.spacer! "
 for /l %%f in (1,2,%rpg.hud.right%) do set rpg.hud.filler=!rpg.hud.filler!.:
+
+::set xp min and max for each level
 for /l %%m in (1,1,200) do (
 	set /a "rpg.hud.xpm%%m=25*%%m*(%%m-1)"
 	set /a "rpg.hud.xpx%%m=25*%%m*(%%m+1)"
@@ -136,7 +139,7 @@ set rpg.hud.invkeys=
 
 ::define position
 set rpg.user.pos=x%rpg.user.x%y%rpg.user.y%
-set /a rpg.map.height=11
+set /a rpg.map.height=rpg.hud.rows/3
 if not defined rpg.map.edit set rpg.map.edit=off
 
 ::set hud directions
@@ -173,8 +176,8 @@ if defined rpg.map.update (
 	set /a rpg.hud.l=1
 	set /a "rpg.map.ymin=rpg.user.y-(rpg.map.height-1)/2"
 	set /a "rpg.map.ymax=rpg.user.y+(rpg.map.height-1)/2"
-	set /a "rpg.map.xmin=rpg.user.x-6"
-	set /a "rpg.map.xmax=rpg.user.x+6"
+	set /a "rpg.map.xmin=rpg.user.x-(rpg.hud.left/3-1)/2"
+	set /a "rpg.map.xmax=rpg.user.x+(rpg.hud.left/3-1)/2"
 	for /l %%y in (!rpg.map.ymax!,-1,!rpg.map.ymin!) do (
 		set rpg.map.line=
 		for /l %%x in (!rpg.map.xmin!,1,!rpg.map.xmax!) do (
@@ -211,20 +214,20 @@ if %rpg.user.status%==fight (
 )
 
 ::set hud info
-set rpg.hud.l12=(%rpg.user.x%,%rpg.user.y%) !rpg.world.%rpg.user.pos%.name! *** Gold: %rpg.user.gold% ***
-if %rpg.map.edit%==on set rpg.hud.l12=*Editing* %rpg.hud.l12%
-set rpg.hud.l14=Str:%rpg.user.str% Con:%rpg.user.con% Dex:%rpg.user.dex% Arm:%rpg.user.arm% Dps:%rpg.user.dps%
+set rpg.hud.l14=(%rpg.user.x%,%rpg.user.y%) !rpg.world.%rpg.user.pos%.name!
+if %rpg.map.edit%==on set rpg.hud.l14=*Editing* %rpg.hud.l14%
+set rpg.hud.l16=Str:%rpg.user.str% Con:%rpg.user.con% Dex:%rpg.user.dex% Arm:%rpg.user.arm% Dps:%rpg.user.dps%
 
 ::set player/enemy hud (this is skipped if inventory or equipment are open)
 if "%rpg.hud.inventory%"=="open" goto :hudinventoryopen
 if "%rpg.hud.equipment%"=="open" goto :hudequipmentopen
-set rpg.hud.l16=%rpg.user.name%, %rpg.user.class% [%rpg.user.level%]
-set rpg.hud.l17= HP %rpg.hud.hpbar% %rpg.user.hp%/%rpg.user.hpmax%
-set rpg.hud.l18= PW %rpg.hud.pwbar% %rpg.user.pw%/%rpg.user.pwmax%
-set rpg.hud.l19= XP %rpg.hud.xpbar% %rpg.user.xp%/%rpg.user.xpmax%
+set rpg.hud.l18=%rpg.user.name%, %rpg.user.class% [%rpg.user.level%]
+set rpg.hud.l19= HP %rpg.hud.hpbar% %rpg.user.hp%/%rpg.user.hpmax%
+set rpg.hud.l20= PW %rpg.hud.pwbar% %rpg.user.pw%/%rpg.user.pwmax%
+set rpg.hud.l21= XP %rpg.hud.xpbar% %rpg.user.xp%/%rpg.user.xpmax%
 if %rpg.user.status%==fight (
-	set rpg.hud.l21=%rpg.enemy.name% [%rpg.enemy.level%]
-	set rpg.hud.l22= HP %rpg.hud.foebar% %rpg.enemy.hp%/%rpg.enemy.hpmax%
+	set rpg.hud.l23=%rpg.enemy.name% [%rpg.enemy.level%]
+	set rpg.hud.l24= HP %rpg.hud.foebar% %rpg.enemy.hp%/%rpg.enemy.hpmax%
 )
 
 ::set interface (this is skipped if inventory is NOT open)
@@ -240,7 +243,7 @@ set /a rpg.hud.invslot=0
 ::list shop items based on slot groups
 if defined rpg.world.%rpg.user.pos%.job (
 	if not !rpg.world.%rpg.user.pos%.job!==merchant (
-		set rpg.hud.l16=Choose an item to buy:
+		set rpg.hud.l18=Choose an item to buy:
 		set rpg.hud.invaction=Buy
 		set rpg.hud.invtype=shop
 		if !rpg.world.%rpg.user.pos%.job!==weaponsm set rpg.hud.invslots=weapon
@@ -255,12 +258,12 @@ if defined rpg.world.%rpg.user.pos%.job (
 			)
 		)
 	) else (
-		set rpg.hud.l16=Choose an item to sell:
+		set rpg.hud.l18=Choose an item to sell:
 		set rpg.hud.invaction=Sell
 		set rpg.hud.invtype=owned
 	)
 ) else (
-	set rpg.hud.l16=Inventory:
+	set rpg.hud.l18=Inventory:
 	set rpg.hud.invaction=Use
 	set rpg.hud.invtype=owned
 )
@@ -284,7 +287,7 @@ if %rpg.hud.invpage% GTR %rpg.hud.invpages% set /a rpg.hud.invpage=1
 set /a "rpg.hud.invmin=1+10*(rpg.hud.invpage-1)"
 set /a rpg.hud.invmax=rpg.hud.invmin+9
 for /l %%l in (%rpg.hud.invmin%,1,%rpg.hud.invmax%) do (
-	set /a rpg.hud.invfirstline=17
+	set /a rpg.hud.invfirstline=19
 	set /a rpg.hud.invlastline=rpg.hud.invfirstline+9
 	set /a rpg.hud.invslot=%%l
 	set /a rpg.hud.invline=%%l+rpg.hud.invfirstline-1
@@ -320,8 +323,8 @@ if %rpg.hud.invpages% GTR 1 (
 	) else (
 		set rpg.hud.invbar=!rpg.hud.invbar!-
 	)
-	set rpg.hud.l28= Page %rpg.hud.invpage% of %rpg.hud.invpages%
-	set rpg.hud.l29= [!rpg.hud.invbar!]
+	set rpg.hud.l30= Page %rpg.hud.invpage% of %rpg.hud.invpages%
+	set rpg.hud.l31= [!rpg.hud.invbar!]
 	set rpg.hud.invkeys=%rpg.hud.invkeys%P
 	set rpg.hud.cont2=%rpg.hud.cont2% [P] Page
 	)
@@ -329,8 +332,8 @@ if %rpg.hud.invpages% GTR 1 (
 ::set equipment (this is skipped if equipment is NOT open)
 if not "%rpg.hud.equipment%"=="open" goto :hudequipmentclosed
 :hudequipmentopen
-set rpg.hud.l16=Equipment:
-set /a rpg.hud.line=17
+set rpg.hud.l18=Equipment:
+set /a rpg.hud.line=19
 set /a rpg.hud.slot=1
 for %%s in (Head Torso Arms Legs Feet Neck Jewel Belt Weapon Shield) do (
 	if defined rpg.user.%%s for %%v in (!rpg.user.%%s!) do (
@@ -346,9 +349,14 @@ set rpg.hud.cont2=%rpg.hud.cont2% [0-9] Unequip
 ::set general controls
 :hudinventoryclosed
 :hudequipmentclosed
-set rpg.hud.l31=Controls:
-set rpg.hud.l32=%rpg.hud.cont:~0,40%
-set rpg.hud.l33=%rpg.hud.cont2:~0,40%
+set rpg.hud.l35=Controls:
+set rpg.hud.l36=%rpg.hud.cont:~0,40%
+set rpg.hud.l37=%rpg.hud.cont2:~0,40%
+
+::set gold display
+set rpg.hud.l33=Gold: %rpg.user.gold%
+
+
 
 ::fill hud rows
 for /l %%l in (1,1,%rpg.hud.lines%) do set rpg.hud.l%%l=!rpg.hud.l%%l!%rpg.hud.spacer%
@@ -665,7 +673,8 @@ for /l %%s in (2,1,%rpg.hud.lines%) do (
 	)
 set rpg.hud.r%rpg.hud.lines%=%rpg.hud.text%
 set rpg.hud.text=!rpg.hud.text:~%rpg.hud.right%!
-if defined rpg.hud.text if not "!rpg.hud.text:~1,2!"=="%rpg.hud.right%" goto :addline
+::check if there is more to print, trick is ~hud.right is set if there is no text
+if defined rpg.hud.text if not "!rpg.hud.text:~1,3!"=="%rpg.hud.right%" goto :addline
 set rpg.hud.text=
 exit /b
 
