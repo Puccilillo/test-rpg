@@ -3,8 +3,10 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
 set appdate=April 11, 2022
-set appver=0.12.1-alpha
+set appver=0.12.3-alpha
 ::
+::0.12.3 better fit screen formula for left hud
+::0.12.2 fixed xp reward code (was missing xp*lev divide)
 ::0.12.1 wider screen setup, auto scaling map
 ::0.12.0 added online backup code for missing game files
 ::0.11.6 removed items listing for admin in game
@@ -19,11 +21,11 @@ set appver=0.12.1-alpha
 title %appname% v%appver% - %appdate%
 set rpg.init=true
 for /f "delims=^=" %%i in ('set rpg.') do set %%i=
-set /a rpg.hud.cols=170
+set /a rpg.hud.cols=116
 set /a rpg.hud.rows=40
 mode con cols=%rpg.hud.cols% lines=%rpg.hud.rows%
 set /a rpg.hud.lines=rpg.hud.rows-2
-set /a rpg.hud.left=rpg.hud.cols/3
+set /a rpg.hud.left=rpg.hud.cols/3/6*6-3
 set /a rpg.hud.right=rpg.hud.cols-rpg.hud.left-5
 set /a rpg.hud.barsize=rpg.hud.left-20
 set /a rpg.inv.nullitem=0
@@ -638,8 +640,8 @@ exit /b
 ::player reward (xp+gold+item)
 :reward
 ::get xp
-set /a "rpg.drop.xp=25*(rpg.enemy.level+1)*rpg.enemy.level/(rpg.enemy.level+10)*rpg.enemy.level/rpg.user.level"
-set /a "rpg.drop.xpcap=25*(rpg.user.level+2)*(rpg.user.level+1)/(rpg.user.level+11)"
+set /a "rpg.drop.xp=(50*rpg.enemy.level*rpg.enemy.level)/(rpg.enemy.level+10/rpg.user.level)"
+set /a "rpg.drop.xpcap=(rpg.user.xplev)/(rpg.user.level+10)*5/4"
 if %rpg.drop.xp% GTR %rpg.drop.xpcap% set /a rpg.drop.xp=rpg.drop.xpcap
 set /a rpg.drop.xpratio=rpg.drop.xp*100/rpg.drop.xpcap
 set /a "rpg.drop.gold=(%random% %%rpg.enemy.level)+1+(rpg.enemy.level/10)"
