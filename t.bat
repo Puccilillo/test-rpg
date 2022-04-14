@@ -3,9 +3,10 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
 set appdate=April 14, 2022
-set appver=0.12.8-alpha
+set appver=0.12.9-alpha
 title %appname% v%appver% - %appdate%
 ::
+::0.12.9 inverted fight order (attack first)
 ::0.12.8 changed hud size to 3/5
 ::0.12.7 sorted inventory code
 ::0.12.6 added alternating display for long names
@@ -536,7 +537,7 @@ goto :loop
 
 ::combat turn
 :fight
-if not defined rpg.user.action set rpg.user.action=defend
+if not defined rpg.user.action set rpg.user.action=attack
 if %rpg.user.hp% EQU 0 goto :death
 if %rpg.enemy.hp% EQU 0 goto :victory
 if %rpg.user.action%==attack (
