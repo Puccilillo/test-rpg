@@ -28,3 +28,7 @@ The main features are:
 # PLANNED FEATURES
 - Crafting and gathering skills
 - Game map expansion (overtime)
+
+# HOW TO START
+- You only need T.BAT
+- DAT files are downloaded the first time you run the script
