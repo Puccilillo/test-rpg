@@ -3,43 +3,42 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
 set appdate=April 11, 2022
-set appver=0.12.3-alpha
+set appver=0.12.5-alpha
+title %appname% v%appver% - %appdate%
 ::
+::0.12.5 code optimization
+::0.12.4 got rid of user class variable
 ::0.12.3 better fit screen formula for left hud
 ::0.12.2 fixed xp reward code (was missing xp*lev divide)
 ::0.12.1 wider screen setup, auto scaling map
 ::0.12.0 added online backup code for missing game files
-::0.11.6 removed items listing for admin in game
-::0.11.5 added items listing with L
-::0.11.4 tweaked enemy str/con formula
-::0.11.3 tweaked encounter chance code
-::0.11.2 better equipment code
-::0.11.1 removed extra quotation marks + replaced calls with fors
-::0.11.0 added code for different map tiles
 ::
 :init
-title %appname% v%appver% - %appdate%
+::clear all set variables
 set rpg.init=true
 for /f "delims=^=" %%i in ('set rpg.') do set %%i=
+::set screen mode
 set /a rpg.hud.cols=116
 set /a rpg.hud.rows=40
 mode con cols=%rpg.hud.cols% lines=%rpg.hud.rows%
 set /a rpg.hud.lines=rpg.hud.rows-2
 set /a rpg.hud.left=rpg.hud.cols/3/6*6-3
 set /a rpg.hud.right=rpg.hud.cols-rpg.hud.left-5
+::set hud visuals
 set /a rpg.hud.barsize=rpg.hud.left-20
-set /a rpg.inv.nullitem=0
-set /a rpg.delay=3
-set rpg.hud.adminkeys=GHKXVM
-set rpg.hud.mapkeys=TLC
-set rpg.hud.keys=WSADQERUI%rpg.hud.adminkeys%
-set /a rpg.hud.armitems=0
-set /a rpg.hud.wepitems=0
-set /a rpg.hud.armitem=1
-set /a rpg.hud.wepitem=1
 for /l %%b in (1,1,%rpg.hud.barsize%) do set rpg.hud.bar=/!rpg.hud.bar!-
 for /l %%s in (1,1,%rpg.hud.left%) do set "rpg.hud.spacer=!rpg.hud.spacer! "
 for /l %%f in (1,2,%rpg.hud.right%) do set rpg.hud.filler=!rpg.hud.filler!.:
+set /a rpg.map.height=rpg.hud.rows/3
+::set control keys
+set rpg.hud.adminkeys=GHKXVM
+set rpg.hud.mapkeys=TLC
+set rpg.hud.keys=WSADQEROI%rpg.hud.adminkeys%
+set /a rpg.delay=3
+::add null item with 0 quantity
+set /a rpg.inv.null=0
+::miscellaneous
+set rpg.map.edit=off
 
 ::set xp min and max for each level
 for /l %%m in (1,1,200) do (
@@ -49,20 +48,14 @@ for /l %%m in (1,1,200) do (
 
 :load
 echo Loading...
-
 ::start new timer
 set /a rpg.time=-1%time:~-10,1%%time:~-8,2%%time:~-5,2%%time:~-2,2%
-
-::finally an online feature
-::this parse data files, try to download missing
-for %%f in (enemies items world) do if not exist %%f.dat curl -s -O https://raw.githubusercontent.com/Puccilillo/test-rpg/main/%%f.dat
-
-::maybe change this to the same operation for all the files
-for /f "delims=" %%e in (enemies.dat) do set rpg.enemy.%%e
-for /f "delims=" %%i in (items.dat) do set rpg.item.%%i
-for /f "delims=" %%w in (world.dat) do set %%w
-
-::look for saved game or create new
+::parse data files, download missing files from github
+for %%f in (enemies items world) do (
+	if not exist %%f.dat curl -s -O https://raw.githubusercontent.com/Puccilillo/test-rpg/main/%%f.dat
+	for /f "delims=" %%v in (%%f.dat) do set %%v
+)
+::look for saved user or create new one
 if not exist user.sav goto :create
 for /f "delims=" %%u in (user.sav) do set %%u
 
@@ -85,35 +78,13 @@ set /a rpg.user.xpmin=rpg.hud.xpm%rpg.user.level%
 set /a rpg.user.xpcur=rpg.user.xp-rpg.user.xpmin
 set /a rpg.user.xplev=rpg.user.xpmax-rpg.user.xpmin
 
-::calc STR=10+L/5 
-if %rpg.user.class%==Warrior (
-	set /a rpg.user.str=10+rpg.user.level/5
-) else (
-		set /a rpg.user.str=10
-)
-
-::calc CON=10+L/5
-if %rpg.user.class%==Warrior (
-	set /a rpg.user.con=10+rpg.user.level/5
-) else (
-	set /a rpg.user.con=10
-)
-
-::set other stats
+::calc user stats, this will include special items bonuses
+set /a rpg.user.str=10+rpg.user.level/5
+set /a rpg.user.con=10+rpg.user.level/5
 set /a rpg.user.dex=10
-
-::calc HPMAX=CON*20+L*50
 set /a rpg.user.hpmax=rpg.user.con*20+rpg.user.level*50
-if %rpg.user.hp% GTR %rpg.user.hpmax% set /a rpg.user.hp=rpg.user.hpmax
-
-::calc PWMAX=DEX*15+L*25
 set /a rpg.user.pwmax=rpg.user.dex*15+rpg.user.level*25
-if %rpg.user.pw% GTR %rpg.user.pwmax% set /a rpg.user.pw=rpg.user.pwmax
-
-::calc ARM=SUM(.arm)+L/10
 set /a rpg.user.arm=rpg.item.%rpg.user.head%.arm+rpg.item.%rpg.user.torso%.arm+rpg.item.%rpg.user.arms%.arm+rpg.item.%rpg.user.legs%.arm+rpg.item.%rpg.user.feet%.arm+rpg.user.level/10
-
-::calc DPS=weapon.dps
 set /a rpg.user.dps=rpg.item.%rpg.user.weapon%.dps
 
 ::create hpbar
@@ -128,21 +99,32 @@ set rpg.hud.pwbar=[!rpg.hud.bar:~%rpg.hud.pwbar.progress%,%rpg.hud.barsize%!]
 set /a "rpg.hud.xpbar.progress=rpg.hud.barsize-(rpg.hud.barsize*rpg.user.xpcur/rpg.user.xplev)"
 set rpg.hud.xpbar=[!rpg.hud.bar:~%rpg.hud.xpbar.progress%,%rpg.hud.barsize%!]
 
-::create foebar
+::create foebar if fighting
 if %rpg.user.status%==fight (
 	set /a "rpg.hud.foebar.progress=rpg.hud.barsize-(rpg.hud.barsize*rpg.enemy.hp/rpg.enemy.hpmax)"
 	for %%v in (!rpg.hud.foebar.progress!) do set rpg.hud.foebar=[!rpg.hud.bar:~%%v,%rpg.hud.barsize%!]
 )
 
-::clear hud lines exept map
+::clear hud lines (skip map if defined)
 set /a rpg.hud.clear=rpg.map.height+1
 for /l %%l in (%rpg.hud.clear%,1,%rpg.hud.lines%) do set rpg.hud.l%%l=
-set rpg.hud.invkeys=
 
-::define position
+::define user position
 set rpg.user.pos=x%rpg.user.x%y%rpg.user.y%
-set /a rpg.map.height=rpg.hud.rows/3
-if not defined rpg.map.edit set rpg.map.edit=off
+
+::set hud info
+set rpg.hud.l14=(%rpg.user.x%,%rpg.user.y%) !rpg.world.%rpg.user.pos%.name!
+if %rpg.map.edit%==on set rpg.hud.l14=*Editing* %rpg.hud.l14%
+set rpg.hud.l16=Str:%rpg.user.str% Con:%rpg.user.con% Dex:%rpg.user.dex% Arm:%rpg.user.arm% Dps:%rpg.user.dps%
+
+::set controls description
+set rpg.hud.cont= [O] Equipment [I] Inventory
+set rpg.hud.cont2= [Q] Quit
+if %rpg.user.status%==fight (
+	set rpg.hud.cont2=%rpg.hud.cont2% [E] Fight
+) else (
+	set rpg.hud.cont2=%rpg.hud.cont2% [E] Wait
+)
 
 ::set hud directions
 set rpg.hud.mov=
@@ -156,7 +138,9 @@ if defined rpg.world.x%rpg.map.w%y%rpg.user.y%.name set "rpg.hud.mov=!rpg.hud.mo
 if defined rpg.world.x%rpg.map.e%y%rpg.user.y%.name set "rpg.hud.mov=!rpg.hud.mov![E] !rpg.world.x%rpg.map.e%y%rpg.user.y%.name! "
 )
 
-::print new location if moved
+::print new location if player has moved moved
+::opens inventory if entering a shop, closes inventory if not
+::set map for update
 if not defined rpg.hud.input set rpg.hud.input=W
 for %%d in (W,S,A,D) do if %rpg.hud.input%==%%d if %rpg.map.edit%==on (
 	call :addline X:%rpg.user.x% Y:%rpg.user.y% Name: !rpg.world.%rpg.user.pos%.name!
@@ -169,11 +153,17 @@ for %%d in (W,S,A,D) do if %rpg.hud.input%==%%d if %rpg.map.edit%==on (
 	call :addline Location: !rpg.world.%rpg.user.pos%.name!
 	call :addline Directions: %rpg.hud.mov%
 	call :addline
-	if defined rpg.world.%rpg.user.pos%.job (set "rpg.hud.inventory=open" & set "rpg.hud.equipment=closed") else (set "rpg.hud.inventory=closed" & set "rpg.hud.equipment=closed")
+	if defined rpg.world.%rpg.user.pos%.job (
+		set "rpg.hud.inventory=open" 
+		set "rpg.hud.equipment=closed"
+	) else (
+		set "rpg.hud.inventory=closed"
+		set "rpg.hud.equipment=closed"
+	)
 	set rpg.map.update=yes
 )
 
-::map update
+::updates map if set to
 if defined rpg.map.update (
 	set /a rpg.hud.l=1
 	set /a "rpg.map.ymin=rpg.user.y-(rpg.map.height-1)/2"
@@ -206,24 +196,13 @@ if defined rpg.map.update (
 set rpg.map.update=
 )
 
-::set controls description
-set rpg.hud.cont= [U] Equipment [I] Inventory
-set rpg.hud.cont2= [Q] Quit
-if %rpg.user.status%==fight (
-	set rpg.hud.cont2=%rpg.hud.cont2% [E] Fight
-) else (
-	set rpg.hud.cont2=%rpg.hud.cont2% [E] Wait
-)
-
-::set hud info
-set rpg.hud.l14=(%rpg.user.x%,%rpg.user.y%) !rpg.world.%rpg.user.pos%.name!
-if %rpg.map.edit%==on set rpg.hud.l14=*Editing* %rpg.hud.l14%
-set rpg.hud.l16=Str:%rpg.user.str% Con:%rpg.user.con% Dex:%rpg.user.dex% Arm:%rpg.user.arm% Dps:%rpg.user.dps%
+::clear inventory keys
+set rpg.hud.invkeys=
 
 ::set player/enemy hud (this is skipped if inventory or equipment are open)
 if "%rpg.hud.inventory%"=="open" goto :hudinventoryopen
 if "%rpg.hud.equipment%"=="open" goto :hudequipmentopen
-set rpg.hud.l18=%rpg.user.name%, %rpg.user.class% [%rpg.user.level%]
+set rpg.hud.l18=%rpg.user.name% [%rpg.user.level%]
 set rpg.hud.l19= HP %rpg.hud.hpbar% %rpg.user.hp%/%rpg.user.hpmax%
 set rpg.hud.l20= PW %rpg.hud.pwbar% %rpg.user.pw%/%rpg.user.pwmax%
 set rpg.hud.l21= XP %rpg.hud.xpbar% %rpg.user.xp%/%rpg.user.xpmax%
@@ -234,20 +213,14 @@ if %rpg.user.status%==fight (
 
 ::set interface (this is skipped if inventory is NOT open)
 if not "%rpg.hud.inventory%"=="open" goto :hudinventoryclosed
-
 :hudinventoryopen
-
 ::set item list
 if defined rpg.hud.inv[1] for /f "delims=^=" %%c in ('set rpg.hud.inv[') do set %%c=
 set /a rpg.hud.invslot=0
-
 ::set actions based on job type
-::list shop items based on slot groups
+::list shop items filtered by item slot name
 if defined rpg.world.%rpg.user.pos%.job (
 	if not !rpg.world.%rpg.user.pos%.job!==merchant (
-		set rpg.hud.l18=Choose an item to buy:
-		set rpg.hud.invaction=Buy
-		set rpg.hud.invtype=shop
 		if !rpg.world.%rpg.user.pos%.job!==weaponsm set rpg.hud.invslots=weapon
 		if !rpg.world.%rpg.user.pos%.job!==armorsm set rpg.hud.invslots=head torso arms belt legs feet shield
 		if !rpg.world.%rpg.user.pos%.job!==tavern set rpg.hud.invslots=
@@ -259,6 +232,9 @@ if defined rpg.world.%rpg.user.pos%.job (
 				)
 			)
 		)
+		set rpg.hud.l18=Choose an item to buy:
+		set rpg.hud.invaction=Buy
+		set rpg.hud.invtype=shop
 	) else (
 		set rpg.hud.l18=Choose an item to sell:
 		set rpg.hud.invaction=Sell
@@ -403,8 +379,8 @@ if [%rpg.hud.input%]==[D] set /a rpg.user.x+=1
 if [%rpg.hud.input%]==[Q] goto :quit
 if [%rpg.hud.input%]==[E] goto :engage
 if [%rpg.hud.input%]==[R] goto :init
-if [%rpg.hud.input%]==[U] goto :equipment
 if [%rpg.hud.input%]==[I] goto :inventory
+if [%rpg.hud.input%]==[O] goto :equipment
 if [%rpg.hud.input%]==[P] if "%rpg.hud.inventory%"=="open" set /a rpg.hud.invpage+=1
 if [%rpg.hud.input%]==[G] (
 	set /p rpg.give="Give item:" 
@@ -445,7 +421,6 @@ goto :eof
 :create
 cls
 set /p rpg.user.name="Enter you name:"
-set rpg.user.class=Warrior
 set /a rpg.user.xp=0
 set /a rpg.user.hp=1
 set /a rpg.user.pw=0
@@ -500,7 +475,9 @@ goto :loop
 :: rest (need to implement hp and pw regen bonuses)
 :wait
 if %rpg.user.hp% LSS %rpg.user.hpmax% set /a rpg.user.hp+=rpg.user.hpmax*3/100
+if %rpg.user.hp% GTR %rpg.user.hpmax% set /a rpg.user.hp=rpg.user.hpmax
 if %rpg.user.pw% LSS %rpg.user.pwmax% set /a rpg.user.pw+=rpg.user.pwmax*3/100
+if %rpg.user.pw% GTR %rpg.user.pwmax% set /a rpg.user.pw=rpg.user.pwmax
 goto :loop
 
 ::opening equipment
