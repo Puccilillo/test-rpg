@@ -2,10 +2,12 @@
 setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
-set appdate=April 14, 2022
-set appver=0.12.9-alpha
+set appdate=April 15, 2022
+set appver=0.12.11-alpha
 title %appname% v%appver% - %appdate%
 ::
+::0.12.11 fixed xp reward formula
+::0.12.10 fixed typo in use item code
 ::0.12.9 inverted fight order (attack first)
 ::0.12.8 changed hud size to 3/5
 ::0.12.7 sorted inventory code
@@ -284,17 +286,17 @@ for /l %%l in (%rpg.hud.invmin%,1,%rpg.hud.invmax%) do (
 	set /a rpg.hud.invslot=%%l
 	set /a rpg.hud.invline=%%l+rpg.hud.invfirstline
 	if !rpg.hud.invline! GTR !rpg.hud.invlastline! set /a "rpg.hud.invline-=10*(rpg.hud.invpage-1)"
-	if %rpg.hud.invaction%==Sell (
-		set /a rpg.hud.bonus=rpg.item.!rpg.hud.inv[%%l]!.val*75/100
-		set rpg.hud.bonus=!rpg.hud.bonus!g
-	)
-	if %rpg.hud.invaction%==Buy (
-		set /a rpg.hud.bonus=rpg.item.!rpg.hud.inv[%%l]!.val*125/100
-		set "rpg.hud.bonus=(+!rpg.item.%%w.arm!!rpg.item.%%w.dps!) !rpg.hud.bonus!g"
-	)
-	if %rpg.hud.invaction%==Use for %%b in (arm dps str con dex hp pw) do if defined rpg.item.!rpg.hud.inv[%%l]!.%%b for %%v in (!rpg.hud.inv[%%l]!) do set "rpg.hud.bonus=(!rpg.inv.%%w!) !rpg.item.%%v.%%b! %%b"
-	if defined rpg.hud.inv[%%l] (
-		for %%v in (!rpg.hud.inv[%%l]!) do set rpg.hud.l!rpg.hud.invline!= [!rpg.hud.invslot:~-1!] !rpg.item.%%v.name:~%rpg.hud.descfilter%! !rpg.hud.bonus!
+	if defined rpg.hud.inv[%%l] for %%v in (!rpg.hud.inv[%%l]!) do (
+		if %rpg.hud.invaction%==Sell (
+			set /a rpg.hud.bonus=rpg.item.%%v.val*75/100
+			set "rpg.hud.bonus=(!rpg.inv.%%v!) !rpg.hud.bonus!g"
+		)
+		if %rpg.hud.invaction%==Buy (
+			set /a rpg.hud.bonus=rpg.item.%%v.val*125/100
+			set "rpg.hud.bonus=(+!rpg.item.%%v.arm!!rpg.item.%%v.dps!) !rpg.hud.bonus!g"
+		)
+		if %rpg.hud.invaction%==Use for %%b in (arm dps str con dex hp pw) do if defined rpg.item.%%v.%%b set "rpg.hud.bonus=(!rpg.inv.%%v!) +!rpg.item.%%v.%%b! %%b"
+		set rpg.hud.l!rpg.hud.invline!= [!rpg.hud.invslot:~-1!] !rpg.item.%%v.name:~%rpg.hud.descfilter%! !rpg.hud.bonus!
 		set rpg.hud.invkeys=!rpg.hud.invkeys!!rpg.hud.invslot:~-1!
 	)
 )
@@ -626,8 +628,8 @@ exit /b
 ::player reward (xp+gold+item)
 :reward
 ::get xp
-set /a "rpg.drop.xp=(50*rpg.enemy.level*rpg.enemy.level)/(rpg.enemy.level+10/rpg.user.level)"
-set /a "rpg.drop.xpcap=(rpg.user.xplev)/(rpg.user.level+10)*5/4"
+set /a "rpg.drop.xp=50*rpg.enemy.level/(rpg.enemy.level+10)"
+set /a "rpg.drop.xpcap=50*rpg.user.level/(rpg.user.level+10)*5/4"
 if %rpg.drop.xp% GTR %rpg.drop.xpcap% set /a rpg.drop.xp=rpg.drop.xpcap
 set /a rpg.drop.xpratio=rpg.drop.xp*100/rpg.drop.xpcap
 set /a "rpg.drop.gold=(%random% %%rpg.enemy.level)+1+(rpg.enemy.level/10)"
