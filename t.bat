@@ -3,9 +3,11 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
 set appdate=April 15, 2022
-set appver=0.12.11-alpha
+set appver=0.12.13-alpha
 title %appname% v%appver% - %appdate%
 ::
+::0.12.13 added fight saving when quitting
+::0.12.12 fixed equipment lines spacing
 ::0.12.11 fixed xp reward formula
 ::0.12.10 fixed typo in use item code
 ::0.12.9 inverted fight order (attack first)
@@ -108,7 +110,7 @@ set rpg.hud.xpbar=[!rpg.hud.bar:~%rpg.hud.xpbar.progress%,%rpg.hud.barsize%!]
 
 ::create foebar if fighting
 if %rpg.user.status%==fight (
-	set /a "rpg.hud.foebar.progress=rpg.hud.barsize-(rpg.hud.barsize*rpg.enemy.hp/rpg.enemy.hpmax)"
+	set /a "rpg.hud.foebar.progress=rpg.hud.barsize-(rpg.hud.barsize*rpg.fight.hp/rpg.fight.hpmax)"
 	for %%v in (!rpg.hud.foebar.progress!) do set rpg.hud.foebar=[!rpg.hud.bar:~%%v,%rpg.hud.barsize%!]
 )
 
@@ -221,8 +223,8 @@ set rpg.hud.l19= HP %rpg.hud.hpbar% %rpg.user.hp%/%rpg.user.hpmax%
 set rpg.hud.l20= PW %rpg.hud.pwbar% %rpg.user.pw%/%rpg.user.pwmax%
 set rpg.hud.l21= XP %rpg.hud.xpbar% %rpg.user.xp%/%rpg.user.xpmax%
 if %rpg.user.status%==fight (
-	set rpg.hud.l23=%rpg.enemy.name% [%rpg.enemy.level%]
-	set rpg.hud.l24= HP %rpg.hud.foebar% %rpg.enemy.hp%/%rpg.enemy.hpmax%
+	set rpg.hud.l23=%rpg.fight.name% [%rpg.fight.level%]
+	set rpg.hud.l24= HP %rpg.hud.foebar% %rpg.fight.hp%/%rpg.fight.hpmax%
 )
 
 ::set interface (this is skipped if inventory is NOT open)
@@ -324,14 +326,14 @@ if not "%rpg.hud.equipment%"=="open" goto :hudequipmentclosed
 set rpg.hud.l18=Equipment:
 set /a rpg.hud.line=19
 set /a rpg.hud.slot=1
-for %%s in (Head Torso Arms Legs Feet Neck Jewel Belt Weapon Shield) do (
+for %%s in (Head Torso Arms Legs Feet Nul Neck Jewel Belt Nul Weapon Shield) do (
 	if defined rpg.user.%%s for %%v in (!rpg.user.%%s!) do (
 		set "rpg.hud.l!rpg.hud.line!= %%s [!rpg.hud.slot:~-1!] !rpg.item.%%v.name:~%rpg.hud.descfilter%! (+!rpg.item.%%v.arm!!rpg.item.%%v.dps!)"
 		set rpg.hud.invkeys=!rpg.hud.invkeys!!rpg.hud.slot:~-1!
 		set rpg.hud.unequip[!rpg.hud.slot:~-1!]=%%s
 	)
+	if not %%s==Nul set /a rpg.hud.slot+=1
 	set /a rpg.hud.line+=1
-	set /a rpg.hud.slot+=1
 )
 
 ::add equipment controls to inventory
@@ -398,7 +400,7 @@ if [%rpg.hud.input%]==[G] (
 	if defined rpg.item.!rpg.give!.name set /a rpg.inv.!rpg.give!+=1
 )
 if [%rpg.hud.input%]==[H] set /p rpg.user.hp="New hp (%rpg.user.hp%):"
-if [%rpg.hud.input%]==[K] set rpg.enemy.hp=0
+if [%rpg.hud.input%]==[K] set rpg.fight.hp=0
 if [%rpg.hud.input%]==[X] set /p rpg.user.xp="New XP (%rpg.user.xp%)"
 if [%rpg.hud.input%]==[V] (
 	set /p rpg.delay="New delay (%rpg.delay%):"
@@ -446,6 +448,7 @@ goto:loop
 cls
 set rpg.user > user.sav
 set rpg.inv. >> user.sav
+set rpg.fight. >> user.sav
 echo %date% %time% > debug.log
 set rpg. >> debug.log
 goto :eof
@@ -453,34 +456,34 @@ goto :eof
 ::pick random enemy (this is skipped if user is already in fight)
 :engage
 if not defined rpg.world.%rpg.user.pos%.enc goto :wait
-if defined rpg.enemy.id goto :fight
+if defined rpg.fight.id goto :fight
 ::chance to fight 20+(lev+1)/10+missinghp%/10
-set /a rpg.enemy.chance=30/(1+rpg.user.level/10)+10-10*rpg.user.hp/rpg.user.hpmax
-set /a rpg.enemy.rnd=%random% %%rpg.enemy.chance
-if %rpg.enemy.rnd% GTR 0 goto :wait
+set /a rpg.fight.chance=30/(1+rpg.user.level/10)+10-10*rpg.user.hp/rpg.user.hpmax
+set /a rpg.fight.rnd=%random% %%rpg.fight.chance
+if %rpg.fight.rnd% GTR 0 goto :wait
 ::fight is on
 set rpg.user.status=fight
 ::pick rnd enemy
-set /a rpg.enemy.count=0
+set /a rpg.fight.count=0
 for %%e in (!rpg.world.%rpg.user.pos%.enc!) do (
-	set rpg.enemy.id!rpg.enemy.count!=%%e
-	set /a rpg.enemy.count+=1
+	set rpg.fight.id!rpg.fight.count!=%%e
+	set /a rpg.fight.count+=1
 	)
-set /a rpg.enemy.rnd=%random% %%rpg.enemy.count
+set /a rpg.fight.rnd=%random% %%rpg.fight.count
 ::set enemy id
-set rpg.enemy.id=!rpg.enemy.id%rpg.enemy.rnd%!
-set rpg.enemy.name=!rpg.enemy.%rpg.enemy.id%.name!
-set /a rpg.enemy.arm=rpg.enemy.%rpg.enemy.id%.arm
-set /a rpg.enemy.max=rpg.enemy.%rpg.enemy.id%.max
-set /a rpg.enemy.min=rpg.enemy.max*9/11
-if %rpg.enemy.min% LEQ 0 set /a rpg.enemy.min=1
-set /a rpg.enemy.rng=1+rpg.enemy.max-rpg.enemy.min
-set /a rpg.enemy.level=(%random% %%rpg.enemy.rng)+rpg.enemy.min
-set /a rpg.enemy.str=10+rpg.enemy.level/2
-set /a rpg.enemy.con=10+rpg.enemy.level/2
-set /a rpg.enemy.hpmax=rpg.enemy.con*20+rpg.enemy.level*50
-set /a rpg.enemy.hp=rpg.enemy.hpmax
-call :addline You encounter a %rpg.enemy.name% [%rpg.enemy.level%].
+set rpg.fight.id=!rpg.fight.id%rpg.fight.rnd%!
+set rpg.fight.name=!rpg.enemy.%rpg.fight.id%.name!
+set /a rpg.fight.arm=rpg.enemy.%rpg.fight.id%.arm
+set /a rpg.fight.max=rpg.enemy.%rpg.fight.id%.max
+set /a rpg.fight.min=rpg.fight.max*9/11
+if %rpg.fight.min% LEQ 0 set /a rpg.fight.min=1
+set /a rpg.fight.rng=1+rpg.fight.max-rpg.fight.min
+set /a rpg.fight.level=(%random% %%rpg.fight.rng)+rpg.fight.min
+set /a rpg.fight.str=10+rpg.fight.level/2
+set /a rpg.fight.con=10+rpg.fight.level/2
+set /a rpg.fight.hpmax=rpg.fight.con*20+rpg.fight.level*50
+set /a rpg.fight.hp=rpg.fight.hpmax
+call :addline You encounter a %rpg.fight.name% [%rpg.fight.level%].
 goto :loop
 
 :: rest (need to implement hp and pw regen bonuses)
@@ -541,21 +544,21 @@ goto :loop
 :fight
 if not defined rpg.user.action set rpg.user.action=attack
 if %rpg.user.hp% EQU 0 goto :death
-if %rpg.enemy.hp% EQU 0 goto :victory
+if %rpg.fight.hp% EQU 0 goto :victory
 if %rpg.user.action%==attack (
-	call :dmgcalc %rpg.user.level% %rpg.user.str% %rpg.user.dps% %rpg.enemy.arm% %rpg.enemy.level%
-	if !rpg.dmg.val! GTR 0 call :addline You hit %rpg.enemy.name% for !rpg.dmg.val! damage.
-	set /a rpg.enemy.hp-=rpg.dmg.val
+	call :dmgcalc %rpg.user.level% %rpg.user.str% %rpg.user.dps% %rpg.fight.arm% %rpg.fight.level%
+	if !rpg.dmg.val! GTR 0 call :addline You hit %rpg.fight.name% for !rpg.dmg.val! damage.
+	set /a rpg.fight.hp-=rpg.dmg.val
 	set rpg.user.action=defend
 ) else (
-	call :dmgcalc %rpg.enemy.level% %rpg.enemy.str% 0 %rpg.user.arm% %rpg.user.level%
-	if !rpg.dmg.val! GTR 0 call :addline %rpg.enemy.name% hits you for !rpg.dmg.val! damage.
+	call :dmgcalc %rpg.fight.level% %rpg.fight.str% 0 %rpg.user.arm% %rpg.user.level%
+	if !rpg.dmg.val! GTR 0 call :addline %rpg.fight.name% hits you for !rpg.dmg.val! damage.
 	if !rpg.dmg.val! GTR 0 color C7
 	set /a rpg.user.hp-=rpg.dmg.val
 	set rpg.user.action=attack
 )
 if %rpg.user.hp% LEQ 0 set /a rpg.user.hp=0
-if %rpg.enemy.hp% LEQ 0 set /a rpg.enemy.hp=0
+if %rpg.fight.hp% LEQ 0 set /a rpg.fight.hp=0
 goto :loop
 
 ::you died (need to fix death display then reset)
@@ -570,7 +573,7 @@ goto :init
 
 ::enemy died
 :victory
-call :addline %rpg.enemy.name% died.
+call :addline %rpg.fight.name% died.
 call :reward
 call :addline You gain %rpg.drop.xp% XP (%rpg.drop.xpratio%%%%% of cap) and %rpg.drop.gold% gold.
 if defined rpg.drop.id call :addline *** You found a !rpg.item.%rpg.drop.id%.name! ***
@@ -628,14 +631,14 @@ exit /b
 ::player reward (xp+gold+item)
 :reward
 ::get xp
-set /a "rpg.drop.xp=50*rpg.enemy.level/(rpg.enemy.level+10)"
+set /a "rpg.drop.xp=50*rpg.fight.level/(rpg.fight.level+10)"
 set /a "rpg.drop.xpcap=50*rpg.user.level/(rpg.user.level+10)*5/4"
 if %rpg.drop.xp% GTR %rpg.drop.xpcap% set /a rpg.drop.xp=rpg.drop.xpcap
 set /a rpg.drop.xpratio=rpg.drop.xp*100/rpg.drop.xpcap
-set /a "rpg.drop.gold=(%random% %%rpg.enemy.level)+1+(rpg.enemy.level/10)"
+set /a "rpg.drop.gold=(%random% %%rpg.fight.level)+1+(rpg.fight.level/10)"
 ::parse drop vals
 set /a rpg.drop.count=0
-set /a rpg.drop.max=rpg.enemy.level*3
+set /a rpg.drop.max=rpg.fight.level*3
 for /f "tokens=3,4 delims=.^=" %%a in ('set rpg.item.') do if "%%b"=="val" (
 	set rpg.drop[!rpg.drop.count!].id=%%a
 	set /a rpg.drop.count+=1
@@ -672,7 +675,7 @@ exit /b
 :clear
 if defined rpg.drop.id for /f "delims=^=" %%a in ('set rpg.drop') do set %%a=
 if defined rpg.dmg.val for /f "delims=^=" %%c in ('set rpg.dmg') do set %%c=
-if defined rpg.enemy.id set rpg.enemy.id=
+if defined rpg.fight.id set rpg.fight.id=
 set rpg.user.status=idle
 set rpg.user.action=
 exit /b
