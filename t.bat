@@ -2,10 +2,11 @@
 setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
-set appdate=April 15, 2022
-set appver=0.12.13-alpha
+set appdate=April 19, 2022
+set appver=0.12.14-alpha
 title %appname% v%appver% - %appdate%
 ::
+::0.12.14 changed dmg/level ratio for dmgcalc
 ::0.12.13 added fight saving when quitting
 ::0.12.12 fixed equipment lines spacing
 ::0.12.11 fixed xp reward formula
@@ -21,31 +22,40 @@ title %appname% v%appver% - %appdate%
 ::0.12.1 wider screen setup, auto scaling map
 ::0.12.0 added online backup code for missing game files
 ::
+
 :init
+
 ::clear all variables
 set rpg.init=true
 for /f "delims=^=" %%i in ('set rpg.') do set %%i=
-::set screen mode
-set /a rpg.hud.cols=116
+
+::set screen width 116=4:3 146=16:9 with Consolas font
+set /a rpg.hud.cols=146
 set /a rpg.hud.rows=40
 mode con cols=%rpg.hud.cols% lines=%rpg.hud.rows%
+
+::set dimensions
 set /a rpg.hud.lines=rpg.hud.rows-2
 set /a rpg.hud.left=rpg.hud.cols/5*2/6*6-3
 set /a rpg.hud.right=rpg.hud.cols-rpg.hud.left-5
-set /a rpg.hud.barsize=rpg.hud.left-17
+set /a rpg.hud.barsize=rpg.hud.left-18
 set /a rpg.hud.invdescmax=rpg.hud.barsize
 set /a rpg.map.height=rpg.hud.rows/3
+
 ::set hud visuals
 for /l %%b in (1,1,%rpg.hud.barsize%) do set rpg.hud.bar=/!rpg.hud.bar!-
 for /l %%s in (1,1,%rpg.hud.left%) do set "rpg.hud.spacer=!rpg.hud.spacer! "
 for /l %%f in (1,2,%rpg.hud.right%) do set rpg.hud.filler=!rpg.hud.filler!.:
+
 ::set control keys
 set rpg.hud.adminkeys=GHKXVM
 set rpg.hud.mapkeys=TLC
 set rpg.hud.keys=WSADQERIO%rpg.hud.adminkeys%
 set /a rpg.delay=3
+
 ::add null item with 0 quantity
 set /a rpg.inv.null=0
+
 ::miscellaneous
 set rpg.map.edit=off
 
@@ -57,20 +67,22 @@ for /l %%m in (1,1,200) do (
 
 :load
 echo Loading...
+
 ::start new timer
 set /a rpg.time=-1%time:~-10,1%%time:~-8,2%%time:~-5,2%%time:~-2,2%
+
 ::parse data files, download missing files from github
 for %%f in (enemies items world) do (
 	if not exist %%f.dat curl -s -O https://raw.githubusercontent.com/Puccilillo/test-rpg/main/%%f.dat
 	for /f "delims=" %%v in (%%f.dat) do set %%v
 )
+
 ::look for saved user or create new one
 if not exist user.sav goto :create
 for /f "delims=" %%u in (user.sav) do set %%u
 
 :loop
 
-:findlevel
 ::this is skipped if maxXP is already set and user xp is in range
 if defined rpg.user.xpmax if %rpg.user.xp% LSS %rpg.user.xpmax% if %rpg.user.xp% GEQ %rpg.user.xpmin% goto :findlevelxp
 set rpg.user.level=
@@ -182,7 +194,11 @@ if defined rpg.map.update (
 	for /l %%y in (!rpg.map.ymax!,-1,!rpg.map.ymin!) do (
 		set rpg.map.line=
 		for /l %%x in (!rpg.map.xmin!,1,!rpg.map.xmax!) do (
-			if defined rpg.world.x%%xy%%y.name (set rpg.map.tile=[_]) else (set rpg.map.tile=-.-)
+			if defined rpg.world.x%%xy%%y.name (
+				set rpg.map.tile=[_]
+			) else (
+				set rpg.map.tile=-.-
+			)
 			if defined rpg.world.x%%xy%%y.job set rpg.map.tile=[$]
 			if defined rpg.world.x%%xy%%y.enc set "rpg.map.tile=[^!]"
 			if defined rpg.world.x%%xy%%y.type (
@@ -428,7 +444,7 @@ if [%rpg.hud.input%]==[0] goto :use
 goto :loop
 goto :eof
 
-:: #################################### ACTIONS ##########################################::
+:: #################################### PLAYER CHOICES ##########################################::
 
 ::Character creation.... here!
 :create
@@ -443,12 +459,11 @@ set /a rpg.user.y=0
 set rpg.user.status=idle
 goto:loop
 
-::Saving user and whatelse?
 :quit
 cls
 set rpg.user > user.sav
 set rpg.inv. >> user.sav
-set rpg.fight. >> user.sav
+2>nul set rpg.fight. >> user.sav
 echo %date% %time% > debug.log
 set rpg. >> debug.log
 goto :eof
@@ -625,7 +640,7 @@ set /a rpg.dmg.defarm=%4
 set /a rpg.dmg.deflev=%5
 set /a rpg.dmg.attdps=1+%rpg.dmg.attlev%/3
 set /a "rpg.dmg.attdmg=rpg.dmg.attlev*(rpg.dmg.attdps+rpg.dmg.wepdps)*rpg.dmg.attstr"
-set /a "rpg.dmg.val=rpg.dmg.attdmg*rpg.dmg.rnd/100*(100-rpg.dmg.defarm)/rpg.dmg.deflev/100"
+set /a "rpg.dmg.val=rpg.dmg.attdmg*rpg.dmg.rnd/100*(100-rpg.dmg.defarm)/100"
 exit /b
 
 ::player reward (xp+gold+item)
