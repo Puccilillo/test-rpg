@@ -3,25 +3,13 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
 set appdate=April 19, 2022
-set appver=0.12.14-alpha
+set appver=0.12.15-alpha
 title %appname% v%appver% - %appdate%
-::
-::0.12.14 changed dmg/level ratio for dmgcalc
-::0.12.13 added fight saving when quitting
-::0.12.12 fixed equipment lines spacing
-::0.12.11 fixed xp reward formula
-::0.12.10 fixed typo in use item code
-::0.12.9 inverted fight order (attack first)
-::0.12.8 changed hud size to 3/5
-::0.12.7 sorted inventory code
-::0.12.6 added alternating display for long names
-::0.12.5 code optimization
-::0.12.4 got rid of user class variable
-::0.12.3 better fit screen formula for left hud
-::0.12.2 fixed xp reward code (was missing xp*lev divide)
-::0.12.1 wider screen setup, auto scaling map
-::0.12.0 added online backup code for missing game files
-::
+goto :init
+
+#CHANGELOG#
+*changed gold reward based on enemy max level
+-removed attlev from dmgcalc
 
 :init
 
@@ -30,7 +18,7 @@ set rpg.init=true
 for /f "delims=^=" %%i in ('set rpg.') do set %%i=
 
 ::set screen width 116=4:3 146=16:9 with Consolas font
-set /a rpg.hud.cols=146
+set /a rpg.hud.cols=116
 set /a rpg.hud.rows=40
 mode con cols=%rpg.hud.cols% lines=%rpg.hud.rows%
 
@@ -557,20 +545,20 @@ goto :loop
 
 ::combat turn
 :fight
-if not defined rpg.user.action set rpg.user.action=attack
+if not defined rpg.fight.turn set rpg.fight.turn=attack
 if %rpg.user.hp% EQU 0 goto :death
 if %rpg.fight.hp% EQU 0 goto :victory
-if %rpg.user.action%==attack (
+if %rpg.fight.turn%==attack (
 	call :dmgcalc %rpg.user.level% %rpg.user.str% %rpg.user.dps% %rpg.fight.arm% %rpg.fight.level%
 	if !rpg.dmg.val! GTR 0 call :addline You hit %rpg.fight.name% for !rpg.dmg.val! damage.
 	set /a rpg.fight.hp-=rpg.dmg.val
-	set rpg.user.action=defend
+	set rpg.fight.turn=defend
 ) else (
 	call :dmgcalc %rpg.fight.level% %rpg.fight.str% 0 %rpg.user.arm% %rpg.user.level%
 	if !rpg.dmg.val! GTR 0 call :addline %rpg.fight.name% hits you for !rpg.dmg.val! damage.
 	if !rpg.dmg.val! GTR 0 color C7
 	set /a rpg.user.hp-=rpg.dmg.val
-	set rpg.user.action=attack
+	set rpg.fight.turn=attack
 )
 if %rpg.user.hp% LEQ 0 set /a rpg.user.hp=0
 if %rpg.fight.hp% LEQ 0 set /a rpg.fight.hp=0
@@ -639,7 +627,7 @@ set /a rpg.dmg.wepdps=%3
 set /a rpg.dmg.defarm=%4
 set /a rpg.dmg.deflev=%5
 set /a rpg.dmg.attdps=1+%rpg.dmg.attlev%/3
-set /a "rpg.dmg.attdmg=rpg.dmg.attlev*(rpg.dmg.attdps+rpg.dmg.wepdps)*rpg.dmg.attstr"
+set /a "rpg.dmg.attdmg=(rpg.dmg.attdps+rpg.dmg.wepdps)*rpg.dmg.attstr"
 set /a "rpg.dmg.val=rpg.dmg.attdmg*rpg.dmg.rnd/100*(100-rpg.dmg.defarm)/100"
 exit /b
 
@@ -650,7 +638,7 @@ set /a "rpg.drop.xp=50*rpg.fight.level/(rpg.fight.level+10)"
 set /a "rpg.drop.xpcap=50*rpg.user.level/(rpg.user.level+10)*5/4"
 if %rpg.drop.xp% GTR %rpg.drop.xpcap% set /a rpg.drop.xp=rpg.drop.xpcap
 set /a rpg.drop.xpratio=rpg.drop.xp*100/rpg.drop.xpcap
-set /a "rpg.drop.gold=(%random% %%rpg.fight.level)+1+(rpg.fight.level/10)"
+set /a "rpg.drop.gold=(%random% %%rpg.fight.max)+1+(rpg.fight.level/10)"
 ::parse drop vals
 set /a rpg.drop.count=0
 set /a rpg.drop.max=rpg.fight.level*3
@@ -692,5 +680,5 @@ if defined rpg.drop.id for /f "delims=^=" %%a in ('set rpg.drop') do set %%a=
 if defined rpg.dmg.val for /f "delims=^=" %%c in ('set rpg.dmg') do set %%c=
 if defined rpg.fight.id set rpg.fight.id=
 set rpg.user.status=idle
-set rpg.user.action=
+set rpg.fight.turn=
 exit /b
