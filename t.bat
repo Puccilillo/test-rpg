@@ -3,17 +3,17 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
 set appdate=April 26, 2022
-set appver=0.12.16-alpha
+set appver=0.13.0-alpha
 title %appname% v%appver% - %appdate%
-goto :init
 
-#CHANGELOG#
-*CHANGED dmgcalc formula (was inconsistent)
+rem #CHANGELOG#
+rem *ADDED power blast attack during fight
+rem *ADDED power blast key handler for user choice code and fight code sections
+rem *CHANGED this section into rem lines
 
 :init
-
-::clear all variables
 set rpg.init=true
+::clear all variables
 for /f "delims=^=" %%i in ('set rpg.') do set %%i=
 
 ::set screen width 116=4:3 146=16:9 with Consolas font
@@ -130,6 +130,11 @@ set rpg.hud.cont= [WASD] Move [O] Equip [I] Inv
 set rpg.hud.cont2= [Q] Quit
 if %rpg.user.status%==fight (
 	set rpg.hud.cont2=%rpg.hud.cont2% [E] Fight
+	set rpg.hud.combatkeys=
+	if not "%rpg.fight.turn%"=="defend" (
+		set rpg.hud.combatkeys=B
+		set rpg.hud.cont2=!rpg.hud.cont2! [B] Blast
+	)
 ) else (
 	set rpg.hud.cont2=%rpg.hud.cont2% [E] Wait
 )
@@ -363,7 +368,7 @@ cls
 for /l %%l in (1,1,%rpg.hud.lines%) do echo  !rpg.hud.l%%l:~0,%rpg.hud.left%! # !rpg.hud.r%%l:~0,%rpg.hud.right%!
 
 ::set map controls
-set "rpg.hud.choice=%rpg.hud.keys%%rpg.hud.invkeys%"
+set "rpg.hud.choice=%rpg.hud.keys%%rpg.hud.invkeys%%rpg.hud.combatkeys%"
 if "%rpg.map.edit%"=="on" (
 	set "rpg.hud.choice=%rpg.hud.choice%%rpg.hud.mapkeys%"
 ) else (
@@ -409,6 +414,7 @@ if [%rpg.hud.input%]==[V] (
 	set /p rpg.delay="New delay (%rpg.delay%):"
 	if !rpg.delay! LSS 1 set rpg.delay=1
 )
+if [%rpg.hud.input%]==[B] goto :fight
 if [%rpg.hud.input%]==[M] if %rpg.map.edit%==on (
 	set rpg.map.edit=off
 ) else (
@@ -549,7 +555,13 @@ if not defined rpg.fight.turn set rpg.fight.turn=attack
 if %rpg.user.hp% EQU 0 goto :death
 if %rpg.fight.hp% EQU 0 goto :victory
 if %rpg.fight.turn%==attack (
-	call :dmgcalc %rpg.user.level% %rpg.user.str% %rpg.user.dps% %rpg.fight.arm% %rpg.fight.level%
+	if [%rpg.hud.input%]==[B] (
+		set /a rpg.fight.blast=rpg.user.dps+rpg.user.pw/10
+		call :dmgcalc %rpg.user.level% %rpg.user.str% !rpg.fight.blast! %rpg.fight.arm% %rpg.fight.level%
+		set /a rpg.user.pw-=rpg.user.pw/10*10
+	) else (
+		call :dmgcalc %rpg.user.level% %rpg.user.str% %rpg.user.dps% %rpg.fight.arm% %rpg.fight.level%
+	)
 	if !rpg.dmg.val! GTR 0 (
 		call :addline You hit %rpg.fight.name% for !rpg.dmg.val! damage.
 		set /a rpg.fight.hp-=rpg.dmg.val
@@ -586,6 +598,7 @@ call :addline You gain %rpg.drop.xp% XP (%rpg.drop.xpratio%%%%% of cap) and %rpg
 if defined rpg.drop.id call :addline *** You found a !rpg.item.%rpg.drop.id%.name! ***
 call :addline
 call :clear
+set rpg.user.xpmax=
 goto :loop
 
 ::unequipping items
