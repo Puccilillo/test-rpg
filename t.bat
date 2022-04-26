@@ -3,13 +3,12 @@ setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
 set appdate=April 26, 2022
-set appver=0.12.15-alpha
+set appver=0.12.16-alpha
 title %appname% v%appver% - %appdate%
 goto :init
 
 #CHANGELOG#
-*CHANGED getgold formula, now based on enemy max level
-*CHANGED dmgcalc formula
+*CHANGED dmgcalc formula (was inconsistent)
 
 :init
 
@@ -632,7 +631,7 @@ set /a rpg.dmg.wepdps=%3
 set /a rpg.dmg.defarm=%4
 set /a rpg.dmg.deflev=%5
 set /a rpg.dmg.attdps=1+%rpg.dmg.attlev%/3
-set /a "rpg.dmg.attdmg=(rpg.dmg.attlev+rpg.dmg.attdps+rpg.dmg.wepdps-rpg.dmg.deflev)*rpg.dmg.attstr"
+set /a "rpg.dmg.attdmg=(rpg.dmg.attlev+rpg.dmg.attdps+rpg.dmg.wepdps)*rpg.dmg.attstr"
 set /a "rpg.dmg.val=rpg.dmg.attdmg*rpg.dmg.rnd/100*(100-rpg.dmg.defarm)/100"
 exit /b
 
