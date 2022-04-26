@@ -2,14 +2,14 @@
 setlocal enableextensions
 setlocal enabledelayedexpansion
 set appname=Test RPG
-set appdate=April 19, 2022
+set appdate=April 26, 2022
 set appver=0.12.15-alpha
 title %appname% v%appver% - %appdate%
 goto :init
 
 #CHANGELOG#
-*changed gold reward based on enemy max level
--removed attlev from dmgcalc
+*CHANGED getgold formula, now based on enemy max level
+*CHANGED dmgcalc formula
 
 :init
 
@@ -445,7 +445,7 @@ set /a rpg.user.gold=0
 set /a rpg.user.x=0
 set /a rpg.user.y=0
 set rpg.user.status=idle
-goto:loop
+goto :loop
 
 :quit
 cls
@@ -460,10 +460,11 @@ goto :eof
 :engage
 if not defined rpg.world.%rpg.user.pos%.enc goto :wait
 if defined rpg.fight.id goto :fight
-::chance to fight 20+(lev+1)/10+missinghp%/10
-set /a rpg.fight.chance=30/(1+rpg.user.level/10)+10-10*rpg.user.hp/rpg.user.hpmax
-set /a rpg.fight.rnd=%random% %%rpg.fight.chance
-if %rpg.fight.rnd% GTR 0 goto :wait
+::chance to fight hp%-75
+set /a rpg.fight.chance=100*rpg.user.hp/rpg.user.hpmax
+set /a rpg.fight.chance-=75
+set /a "rpg.fight.rnd=(%random% %%100) +1"
+if %rpg.fight.rnd% GTR %rpg.fight.chance% goto :wait
 ::fight is on
 set rpg.user.status=fight
 ::pick rnd enemy
@@ -550,14 +551,18 @@ if %rpg.user.hp% EQU 0 goto :death
 if %rpg.fight.hp% EQU 0 goto :victory
 if %rpg.fight.turn%==attack (
 	call :dmgcalc %rpg.user.level% %rpg.user.str% %rpg.user.dps% %rpg.fight.arm% %rpg.fight.level%
-	if !rpg.dmg.val! GTR 0 call :addline You hit %rpg.fight.name% for !rpg.dmg.val! damage.
-	set /a rpg.fight.hp-=rpg.dmg.val
+	if !rpg.dmg.val! GTR 0 (
+		call :addline You hit %rpg.fight.name% for !rpg.dmg.val! damage.
+		set /a rpg.fight.hp-=rpg.dmg.val
+	)
 	set rpg.fight.turn=defend
 ) else (
 	call :dmgcalc %rpg.fight.level% %rpg.fight.str% 0 %rpg.user.arm% %rpg.user.level%
-	if !rpg.dmg.val! GTR 0 call :addline %rpg.fight.name% hits you for !rpg.dmg.val! damage.
-	if !rpg.dmg.val! GTR 0 color C7
-	set /a rpg.user.hp-=rpg.dmg.val
+	if !rpg.dmg.val! GTR 0 (
+		call :addline %rpg.fight.name% hits you for !rpg.dmg.val! damage.
+		color C7
+		set /a rpg.user.hp-=rpg.dmg.val
+	)
 	set rpg.fight.turn=attack
 )
 if %rpg.user.hp% LEQ 0 set /a rpg.user.hp=0
@@ -627,26 +632,26 @@ set /a rpg.dmg.wepdps=%3
 set /a rpg.dmg.defarm=%4
 set /a rpg.dmg.deflev=%5
 set /a rpg.dmg.attdps=1+%rpg.dmg.attlev%/3
-set /a "rpg.dmg.attdmg=(rpg.dmg.attdps+rpg.dmg.wepdps)*rpg.dmg.attstr"
+set /a "rpg.dmg.attdmg=(rpg.dmg.attlev+rpg.dmg.attdps+rpg.dmg.wepdps-rpg.dmg.deflev)*rpg.dmg.attstr"
 set /a "rpg.dmg.val=rpg.dmg.attdmg*rpg.dmg.rnd/100*(100-rpg.dmg.defarm)/100"
 exit /b
 
 ::player reward (xp+gold+item)
 :reward
-::get xp
+::getxp
 set /a "rpg.drop.xp=50*rpg.fight.level/(rpg.fight.level+10)"
 set /a "rpg.drop.xpcap=50*rpg.user.level/(rpg.user.level+10)*5/4"
 if %rpg.drop.xp% GTR %rpg.drop.xpcap% set /a rpg.drop.xp=rpg.drop.xpcap
 set /a rpg.drop.xpratio=rpg.drop.xp*100/rpg.drop.xpcap
+::getgold
 set /a "rpg.drop.gold=(%random% %%rpg.fight.max)+1+(rpg.fight.level/10)"
-::parse drop vals
+::getitem
 set /a rpg.drop.count=0
 set /a rpg.drop.max=rpg.fight.level*3
 for /f "tokens=3,4 delims=.^=" %%a in ('set rpg.item.') do if "%%b"=="val" (
 	set rpg.drop[!rpg.drop.count!].id=%%a
 	set /a rpg.drop.count+=1
 )
-::picking rnd from count and saving id
 set /a rpg.drop.rnd=%random% %%rpg.drop.count
 set rpg.drop.id=!rpg.drop[%rpg.drop.rnd%].id!
 ::adding rewards
